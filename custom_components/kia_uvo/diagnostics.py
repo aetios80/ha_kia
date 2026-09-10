@@ -1,4 +1,4 @@
-"""Diagnostics support for Hyundai / Kia / Genesis Connect.
+"""Diagnostics support for Kia Connect EU.
 
 Downloadable from Settings > Devices & Services > kia_uvo > (menu) > Download
 diagnostics. Returns a redacted snapshot of the account's cached state —
@@ -11,8 +11,6 @@ before the dump leaves their Home Assistant instance.
 from __future__ import annotations
 
 from dataclasses import asdict
-from importlib.metadata import PackageNotFoundError
-from importlib.metadata import version as pkg_version
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
@@ -35,7 +33,7 @@ from .const import (
     DEFAULT_USE_EMAIL_WITH_GEOCODE_API,
     DOMAIN,
 )
-from .coordinator import HyundaiKiaConnectDataUpdateCoordinator
+from .coordinator import KiaConnectEuDataUpdateCoordinator
 from .redact import redact
 
 
@@ -86,7 +84,7 @@ def _config_options(entry: ConfigEntry) -> dict[str, Any]:
 
 
 def _vehicles_payload(
-    coordinator: HyundaiKiaConnectDataUpdateCoordinator,
+    coordinator: KiaConnectEuDataUpdateCoordinator,
 ) -> list[dict[str, Any]]:
     vm = coordinator.vehicle_manager
     vehicles: list[dict[str, Any]] = []
@@ -106,25 +104,18 @@ async def async_get_config_entry_diagnostics(
     """Return a redacted diagnostics snapshot for this config entry."""
     # kia_uvo stores its coordinator under config_entry.unique_id (see
     # __init__.py async_setup_entry), not entry_id.
-    coordinator: HyundaiKiaConnectDataUpdateCoordinator = hass.data[DOMAIN][
+    coordinator: KiaConnectEuDataUpdateCoordinator = hass.data[DOMAIN][
         entry.unique_id
     ]
     vm = coordinator.vehicle_manager
     integration = await async_get_integration(hass, DOMAIN)
-
-    try:
-        library_version: str | None = await hass.async_add_executor_job(
-            pkg_version, "hyundai_kia_connect_api"
-        )
-    except PackageNotFoundError:
-        library_version = None
 
     payload: dict[str, Any] = {
         "region": entry.data.get(CONF_REGION),
         "brand": entry.data.get(CONF_BRAND),
         "api_class": type(vm.api).__name__,
         "integration_version": integration.version,
-        "library_version": library_version,
+        "library_version": "vendored",
         "config_options": _config_options(entry),
         "auth": _token_meta(vm.token),
         "vehicle_count": len(vm.vehicles),

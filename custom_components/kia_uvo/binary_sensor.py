@@ -1,4 +1,4 @@
-"""Sensor for Hyundai / Kia Connect integration."""
+"""Sensor for Kia Connect EU integration."""
 
 from __future__ import annotations
 
@@ -19,14 +19,14 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from ._vendor.hyundai_kia_connect_api import Vehicle
 
 from .const import DOMAIN
-from .coordinator import HyundaiKiaConnectDataUpdateCoordinator
-from .entity import HyundaiKiaConnectEntity
+from .coordinator import KiaConnectEuDataUpdateCoordinator
+from .entity import KiaConnectEuEntity
 
 _LOGGER = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True, kw_only=True)
-class HyundaiKiaBinarySensorEntityDescription(BinarySensorEntityDescription):
+class KiaConnectEuBinarySensorEntityDescription(BinarySensorEntityDescription):
     """A class that describes custom binary sensor entities."""
 
     is_on: Callable[[Vehicle], bool] | None = None
@@ -34,8 +34,8 @@ class HyundaiKiaBinarySensorEntityDescription(BinarySensorEntityDescription):
     off_icon: str | None = None
 
 
-SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaBinarySensorEntityDescription, ...]] = (
-    HyundaiKiaBinarySensorEntityDescription(
+SENSOR_DESCRIPTIONS: Final[tuple[KiaConnectEuBinarySensorEntityDescription, ...]] = (
+    KiaConnectEuBinarySensorEntityDescription(
         key="engine_is_running",
         translation_key="engine_is_running",
         is_on=lambda vehicle: vehicle.engine_is_running,
@@ -43,7 +43,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaBinarySensorEntityDescription, ...]] 
         off_icon="mdi:engine-off",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="defrost_is_on",
         translation_key="defrost_is_on",
         is_on=lambda vehicle: vehicle.defrost_is_on,
@@ -51,7 +51,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaBinarySensorEntityDescription, ...]] 
         off_icon="mdi:car-defrost-front",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="steering_wheel_heater_is_on",
         translation_key="steering_wheel_heater_is_on",
         is_on=lambda vehicle: vehicle.steering_wheel_heater_is_on,
@@ -59,7 +59,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaBinarySensorEntityDescription, ...]] 
         off_icon="mdi:steering",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="back_window_heater_is_on",
         translation_key="back_window_heater_is_on",
         is_on=lambda vehicle: vehicle.back_window_heater_is_on,
@@ -67,7 +67,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaBinarySensorEntityDescription, ...]] 
         off_icon="mdi:car-defrost-rear",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="side_mirror_heater_is_on",
         translation_key="side_mirror_heater_is_on",
         is_on=lambda vehicle: vehicle.side_mirror_heater_is_on,
@@ -75,7 +75,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaBinarySensorEntityDescription, ...]] 
         off_icon="mdi:car-side",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="front_left_door_is_open",
         translation_key="front_left_door_is_open",
         is_on=lambda vehicle: vehicle.front_left_door_is_open,
@@ -84,7 +84,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaBinarySensorEntityDescription, ...]] 
         device_class=BinarySensorDeviceClass.DOOR,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="front_right_door_is_open",
         translation_key="front_right_door_is_open",
         is_on=lambda vehicle: vehicle.front_right_door_is_open,
@@ -93,7 +93,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaBinarySensorEntityDescription, ...]] 
         device_class=BinarySensorDeviceClass.DOOR,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="back_left_door_is_open",
         translation_key="back_left_door_is_open",
         is_on=lambda vehicle: vehicle.back_left_door_is_open,
@@ -102,7 +102,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaBinarySensorEntityDescription, ...]] 
         device_class=BinarySensorDeviceClass.DOOR,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="back_right_door_is_open",
         translation_key="back_right_door_is_open",
         is_on=lambda vehicle: vehicle.back_right_door_is_open,
@@ -111,7 +111,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaBinarySensorEntityDescription, ...]] 
         device_class=BinarySensorDeviceClass.DOOR,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="trunk_is_open",
         translation_key="trunk_is_open",
         is_on=lambda vehicle: vehicle.trunk_is_open,
@@ -120,7 +120,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaBinarySensorEntityDescription, ...]] 
         device_class=BinarySensorDeviceClass.DOOR,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="hood_is_open",
         translation_key="hood_is_open",
         is_on=lambda vehicle: vehicle.hood_is_open,
@@ -129,7 +129,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaBinarySensorEntityDescription, ...]] 
         device_class=BinarySensorDeviceClass.DOOR,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="front_left_window_is_open",
         translation_key="front_left_window_is_open",
         is_on=lambda vehicle: vehicle.front_left_window_is_open,
@@ -138,7 +138,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaBinarySensorEntityDescription, ...]] 
         device_class=BinarySensorDeviceClass.WINDOW,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="front_right_window_is_open",
         translation_key="front_right_window_is_open",
         is_on=lambda vehicle: vehicle.front_right_window_is_open,
@@ -147,7 +147,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaBinarySensorEntityDescription, ...]] 
         device_class=BinarySensorDeviceClass.WINDOW,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="back_left_window_is_open",
         translation_key="back_left_window_is_open",
         is_on=lambda vehicle: vehicle.back_left_window_is_open,
@@ -156,7 +156,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaBinarySensorEntityDescription, ...]] 
         device_class=BinarySensorDeviceClass.WINDOW,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="back_right_window_is_open",
         translation_key="back_right_window_is_open",
         is_on=lambda vehicle: vehicle.back_right_window_is_open,
@@ -165,21 +165,21 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaBinarySensorEntityDescription, ...]] 
         device_class=BinarySensorDeviceClass.WINDOW,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="ev_battery_is_charging",
         translation_key="ev_battery_is_charging",
         is_on=lambda vehicle: vehicle.ev_battery_is_charging,
         device_class=BinarySensorDeviceClass.BATTERY_CHARGING,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="ev_battery_is_plugged_in",
         translation_key="ev_battery_is_plugged_in",
         is_on=lambda vehicle: vehicle.ev_battery_is_plugged_in,
         device_class=BinarySensorDeviceClass.PLUG,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="fuel_level_is_low",
         translation_key="fuel_level_is_low",
         is_on=lambda vehicle: vehicle.fuel_level_is_low,
@@ -187,7 +187,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaBinarySensorEntityDescription, ...]] 
         off_icon="mdi:gas-station",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="smart_key_battery_warning_is_on",
         translation_key="smart_key_battery_warning_is_on",
         is_on=lambda vehicle: vehicle.smart_key_battery_warning_is_on,
@@ -196,7 +196,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaBinarySensorEntityDescription, ...]] 
         device_class=BinarySensorDeviceClass.BATTERY,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="washer_fluid_warning_is_on",
         translation_key="washer_fluid_warning_is_on",
         is_on=lambda vehicle: vehicle.washer_fluid_warning_is_on,
@@ -205,7 +205,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaBinarySensorEntityDescription, ...]] 
         device_class=BinarySensorDeviceClass.PROBLEM,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="tire_pressure_all_warning_is_on",
         translation_key="tire_pressure_all_warning_is_on",
         is_on=lambda vehicle: vehicle.tire_pressure_all_warning_is_on,
@@ -214,7 +214,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaBinarySensorEntityDescription, ...]] 
         device_class=BinarySensorDeviceClass.PROBLEM,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="tire_pressure_rear_left_warning_is_on",
         translation_key="tire_pressure_rear_left_warning_is_on",
         is_on=lambda vehicle: vehicle.tire_pressure_rear_left_warning_is_on,
@@ -223,7 +223,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaBinarySensorEntityDescription, ...]] 
         device_class=BinarySensorDeviceClass.PROBLEM,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="tire_pressure_front_left_warning_is_on",
         translation_key="tire_pressure_front_left_warning_is_on",
         is_on=lambda vehicle: vehicle.tire_pressure_front_left_warning_is_on,
@@ -232,7 +232,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaBinarySensorEntityDescription, ...]] 
         device_class=BinarySensorDeviceClass.PROBLEM,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="tire_pressure_front_right_warning_is_on",
         translation_key="tire_pressure_front_right_warning_is_on",
         is_on=lambda vehicle: vehicle.tire_pressure_front_right_warning_is_on,
@@ -241,7 +241,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaBinarySensorEntityDescription, ...]] 
         device_class=BinarySensorDeviceClass.PROBLEM,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="tire_pressure_rear_right_warning_is_on",
         translation_key="tire_pressure_rear_right_warning_is_on",
         is_on=lambda vehicle: vehicle.tire_pressure_rear_right_warning_is_on,
@@ -250,7 +250,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaBinarySensorEntityDescription, ...]] 
         device_class=BinarySensorDeviceClass.PROBLEM,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="air_control_is_on",
         translation_key="air_control_is_on",
         is_on=lambda vehicle: vehicle.air_control_is_on,
@@ -258,7 +258,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaBinarySensorEntityDescription, ...]] 
         off_icon="mdi:air-conditioner",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="ev_charge_port_door_is_open",
         translation_key="ev_charge_port_door_is_open",
         is_on=lambda vehicle: vehicle.ev_charge_port_door_is_open,
@@ -267,7 +267,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaBinarySensorEntityDescription, ...]] 
         device_class=BinarySensorDeviceClass.DOOR,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="brake_fluid_warning_is_on",
         translation_key="brake_fluid_warning_is_on",
         is_on=lambda vehicle: vehicle.brake_fluid_warning_is_on,
@@ -276,7 +276,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaBinarySensorEntityDescription, ...]] 
         device_class=BinarySensorDeviceClass.PROBLEM,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="sunroof_is_open",
         translation_key="sunroof_is_open",
         is_on=lambda vehicle: vehicle.sunroof_is_open,
@@ -285,7 +285,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaBinarySensorEntityDescription, ...]] 
         device_class=BinarySensorDeviceClass.WINDOW,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="accessory_on",
         translation_key="accessory_on",
         is_on=lambda vehicle: vehicle.accessory_on,
@@ -293,7 +293,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaBinarySensorEntityDescription, ...]] 
         off_icon="mdi:car-off",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="ign3",
         translation_key="ign3",
         is_on=lambda vehicle: vehicle.ign3,
@@ -301,7 +301,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaBinarySensorEntityDescription, ...]] 
         off_icon="mdi:car-off",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="remote_ignition",
         translation_key="remote_ignition",
         is_on=lambda vehicle: vehicle.remote_ignition,
@@ -309,7 +309,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaBinarySensorEntityDescription, ...]] 
         off_icon="mdi:remote-off",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="transmission_condition",
         translation_key="transmission_condition",
         is_on=lambda vehicle: vehicle.transmission_condition,
@@ -317,7 +317,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaBinarySensorEntityDescription, ...]] 
         off_icon="mdi:car",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="sleep_mode_check",
         translation_key="sleep_mode_check",
         is_on=lambda vehicle: vehicle.sleep_mode_check,
@@ -325,7 +325,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaBinarySensorEntityDescription, ...]] 
         off_icon="mdi:sleep-off",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="headlamp_status",
         translation_key="headlamp_status",
         is_on=lambda vehicle: vehicle.headlamp_status,
@@ -333,7 +333,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaBinarySensorEntityDescription, ...]] 
         off_icon="mdi:lightbulb-outline",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="headlamp_left_low",
         translation_key="headlamp_left_low",
         is_on=lambda vehicle: vehicle.headlamp_left_low,
@@ -341,7 +341,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaBinarySensorEntityDescription, ...]] 
         off_icon="mdi:lightbulb-outline",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="headlamp_right_low",
         translation_key="headlamp_right_low",
         is_on=lambda vehicle: vehicle.headlamp_right_low,
@@ -349,7 +349,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaBinarySensorEntityDescription, ...]] 
         off_icon="mdi:lightbulb-outline",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="headlamp_left_high",
         translation_key="headlamp_left_high",
         is_on=lambda vehicle: vehicle.headlamp_left_high,
@@ -357,7 +357,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaBinarySensorEntityDescription, ...]] 
         off_icon="mdi:lightbulb-outline",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="headlamp_right_high",
         translation_key="headlamp_right_high",
         is_on=lambda vehicle: vehicle.headlamp_right_high,
@@ -365,7 +365,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaBinarySensorEntityDescription, ...]] 
         off_icon="mdi:lightbulb-outline",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="headlamp_left_bifunc",
         translation_key="headlamp_left_bifunc",
         is_on=lambda vehicle: vehicle.headlamp_left_bifunc,
@@ -373,7 +373,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaBinarySensorEntityDescription, ...]] 
         off_icon="mdi:lightbulb-outline",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="headlamp_right_bifunc",
         translation_key="headlamp_right_bifunc",
         is_on=lambda vehicle: vehicle.headlamp_right_bifunc,
@@ -381,7 +381,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaBinarySensorEntityDescription, ...]] 
         off_icon="mdi:lightbulb-outline",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="stop_lamp_left",
         translation_key="stop_lamp_left",
         is_on=lambda vehicle: vehicle.stop_lamp_left,
@@ -389,7 +389,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaBinarySensorEntityDescription, ...]] 
         off_icon="mdi:lightbulb-outline",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="stop_lamp_right",
         translation_key="stop_lamp_right",
         is_on=lambda vehicle: vehicle.stop_lamp_right,
@@ -397,7 +397,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaBinarySensorEntityDescription, ...]] 
         off_icon="mdi:lightbulb-outline",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="turn_signal_left_front",
         translation_key="turn_signal_left_front",
         is_on=lambda vehicle: vehicle.turn_signal_left_front,
@@ -405,7 +405,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaBinarySensorEntityDescription, ...]] 
         off_icon="mdi:lightbulb-outline",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="turn_signal_right_front",
         translation_key="turn_signal_right_front",
         is_on=lambda vehicle: vehicle.turn_signal_right_front,
@@ -413,7 +413,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaBinarySensorEntityDescription, ...]] 
         off_icon="mdi:lightbulb-outline",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="turn_signal_left_rear",
         translation_key="turn_signal_left_rear",
         is_on=lambda vehicle: vehicle.turn_signal_left_rear,
@@ -421,7 +421,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaBinarySensorEntityDescription, ...]] 
         off_icon="mdi:lightbulb-outline",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="turn_signal_right_rear",
         translation_key="turn_signal_right_rear",
         is_on=lambda vehicle: vehicle.turn_signal_right_rear,
@@ -429,7 +429,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaBinarySensorEntityDescription, ...]] 
         off_icon="mdi:lightbulb-outline",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="is_locked",
         translation_key="is_locked",
         is_on=lambda vehicle: not vehicle.is_locked,
@@ -437,7 +437,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaBinarySensorEntityDescription, ...]] 
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     # Seat heater sensors derived from seat status strings
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="front_left_seat_heater_on",
         translation_key="front_left_seat_heater_on",
         is_on=lambda vehicle: vehicle.front_left_seat_status,
@@ -445,7 +445,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaBinarySensorEntityDescription, ...]] 
         off_icon="mdi:seat-outline",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="front_right_seat_heater_on",
         translation_key="front_right_seat_heater_on",
         is_on=lambda vehicle: vehicle.front_right_seat_status,
@@ -453,7 +453,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaBinarySensorEntityDescription, ...]] 
         off_icon="mdi:seat-outline",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="rear_left_seat_heater_on",
         translation_key="rear_left_seat_heater_on",
         is_on=lambda vehicle: vehicle.rear_left_seat_status,
@@ -461,7 +461,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaBinarySensorEntityDescription, ...]] 
         off_icon="mdi:seat-outline",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="rear_right_seat_heater_on",
         translation_key="rear_right_seat_heater_on",
         is_on=lambda vehicle: vehicle.rear_right_seat_status,
@@ -469,7 +469,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaBinarySensorEntityDescription, ...]] 
         off_icon="mdi:seat-outline",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="front_left_door_is_locked",
         translation_key="front_left_door_is_locked",
         device_class=BinarySensorDeviceClass.LOCK,
@@ -478,7 +478,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaBinarySensorEntityDescription, ...]] 
         off_icon="mdi:lock",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="front_right_door_is_locked",
         translation_key="front_right_door_is_locked",
         device_class=BinarySensorDeviceClass.LOCK,
@@ -487,7 +487,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaBinarySensorEntityDescription, ...]] 
         off_icon="mdi:lock",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="back_left_door_is_locked",
         translation_key="back_left_door_is_locked",
         device_class=BinarySensorDeviceClass.LOCK,
@@ -496,7 +496,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaBinarySensorEntityDescription, ...]] 
         off_icon="mdi:lock",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="back_right_door_is_locked",
         translation_key="back_right_door_is_locked",
         device_class=BinarySensorDeviceClass.LOCK,
@@ -505,39 +505,39 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaBinarySensorEntityDescription, ...]] 
         off_icon="mdi:lock",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="ev_battery_winter_mode",
         translation_key="ev_battery_winter_mode",
         icon="mdi:snowflake-thermometer",
         is_on=lambda vehicle: vehicle.ev_battery_winter_mode,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="ev_battery_precondition_enabled",
         translation_key="ev_battery_precondition_enabled",
         icon="mdi:battery-charging-high",
         is_on=lambda vehicle: vehicle.ev_battery_precondition_enabled,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="ev_battery_heating_state",
         translation_key="ev_battery_heating_state",
         icon="mdi:fire",
         is_on=lambda vehicle: vehicle.ev_battery_heating_state,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="ev_v2l_status",
         translation_key="ev_v2l_status",
         icon="mdi:ev-station",
         is_on=lambda vehicle: vehicle.ev_v2l_status,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="ev_v2x_status",
         translation_key="ev_v2x_status",
         icon="mdi:ev-station",
         is_on=lambda vehicle: vehicle.ev_v2x_status,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="oil_level_warning_is_on",
         translation_key="oil_level_warning_is_on",
         is_on=lambda vehicle: vehicle.oil_level_warning_is_on,
@@ -546,7 +546,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaBinarySensorEntityDescription, ...]] 
         device_class=BinarySensorDeviceClass.PROBLEM,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaBinarySensorEntityDescription(
+    KiaConnectEuBinarySensorEntityDescription(
         key="battery_auxiliary_fail_warning_is_on",
         translation_key="battery_auxiliary_fail_warning_is_on",
         is_on=lambda vehicle: vehicle.battery_auxiliary_fail_warning_is_on,
@@ -565,13 +565,13 @@ async def async_setup_entry(
 ) -> None:
     """Set up binary_sensor platform."""
     coordinator = hass.data[DOMAIN][config_entry.unique_id]
-    entities: list[HyundaiKiaConnectBinarySensor] = []
+    entities: list[KiaConnectEuBinarySensor] = []
     for vehicle_id in coordinator.vehicle_manager.vehicles:
         vehicle: Vehicle = coordinator.vehicle_manager.vehicles[vehicle_id]
         for description in SENSOR_DESCRIPTIONS:
             if getattr(vehicle, description.key, None) is not None:
                 entities.append(
-                    HyundaiKiaConnectBinarySensor(coordinator, description, vehicle)
+                    KiaConnectEuBinarySensor(coordinator, description, vehicle)
                 )
     async_add_entities(entities)
 
@@ -579,18 +579,18 @@ async def async_setup_entry(
 PARALLEL_UPDATES = 0
 
 
-class HyundaiKiaConnectBinarySensor(BinarySensorEntity, HyundaiKiaConnectEntity):
-    """Hyundai / Kia Connect binary sensor class."""
+class KiaConnectEuBinarySensor(BinarySensorEntity, KiaConnectEuEntity):
+    """Kia Connect EU binary sensor class."""
 
     def __init__(
         self,
-        coordinator: HyundaiKiaConnectDataUpdateCoordinator,
-        description: HyundaiKiaBinarySensorEntityDescription,
+        coordinator: KiaConnectEuDataUpdateCoordinator,
+        description: KiaConnectEuBinarySensorEntityDescription,
         vehicle: Vehicle,
     ) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator, vehicle)
-        self.entity_description: HyundaiKiaBinarySensorEntityDescription = description
+        self.entity_description: KiaConnectEuBinarySensorEntityDescription = description
         self._attr_unique_id = f"{DOMAIN}_{vehicle.id}_{description.key}"
         if description.entity_category:
             self._attr_entity_category = description.entity_category

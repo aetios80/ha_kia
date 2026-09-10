@@ -1,10 +1,10 @@
 {
-  "title": "Hyundai / Kia Connect",
+  "title": "Kia Connect EU",
   "config": {
     "step": {
       "user": {
-        "title": "Hyundai / Kia Connect - Hitelesítés",
-        "description": "Állítsd be a Hyundai (Bluelink) / Kia (Uvo) Connect Home Assistant integrációt.",
+        "title": "Kia Connect EU - Hitelesítés",
+        "description": "Állítsd be a Kia Connect EU Home Assistant integrációt.",
         "data": {
           "username": "Felhasználónév",
           "password": "Jelszó",
@@ -14,18 +14,18 @@
         }
       },
       "reauth_confirm": {
-        "title": "Hyundai / Kia Connect - Újra hitelesítés",
+        "title": "Kia Connect EU - Újra hitelesítés",
         "description": "Fiókja nem hitelesíthető. Az újra beállításhoz kattintson a Küldés gombra."
       },
       "reconfigure": {
-        "title": "Hyundai / Kia Connect - Újrakonfigurálás",
+        "title": "Kia Connect EU - Újrakonfigurálás",
         "data": {
           "reconfigure_choice": "Mit szeretnél tenni?"
         }
       },
       "reconfigure_pin": {
-        "title": "Hyundai / Kia Connect - PIN beállítása",
-        "description": "Add meg a PIN-kódot, amely szükséges a távirányítási parancsok (zárás, nyitás, légkondicionálás) engedélyezéséhez a Kia/Hyundai Connect alkalmazásban.",
+        "title": "Kia Connect EU - PIN beállítása",
+        "description": "Add meg a PIN-kódot, amely szükséges a távirányítási parancsok (zárás, nyitás, légkondicionálás) engedélyezéséhez a Kia Connect alkalmazásban.",
         "data": {
           "pin": "PIN"
         }
@@ -36,14 +36,14 @@
       "reconfigure_successful": "Újrakonfigurálás sikeres"
     },
     "error": {
-      "invalid_auth": "Nem sikerült bejelentkezni a Hyundai (Bluelink) / Kia (Uvo) Connect szerverekre. Kérjük, használja a hivatalos alkalmazást a kijelentkezéshez és a bejelentkezéshez, majd próbálja újra!",
+      "invalid_auth": "Nem sikerült bejelentkezni a Kia Connect EU szerverekre. Kérjük, használja a hivatalos alkalmazást a kijelentkezéshez és a bejelentkezéshez, majd próbálja újra!",
       "unknown": "Váratlan hiba"
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "Hyundai / Kia Connect - Beállítások",
+        "title": "Kia Connect EU - Beállítások",
         "data": {
           "scan_interval": "Frissítési időköz (perc)",
           "force_refresh": "Kényszerített frissítési időköz (perc)",

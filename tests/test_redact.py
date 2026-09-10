@@ -80,7 +80,7 @@ def test_preserves_state_keys() -> None:
     assert redact({"battery_level": 80}) == {"battery_level": 80}
     assert redact({"odometer": 5000}) == {"odometer": 5000}
     assert redact({"region": "europe"}) == {"region": "europe"}
-    assert redact({"api_class": "HyundaiCciApiEU"}) == {"api_class": "HyundaiCciApiEU"}
+    assert redact({"api_class": "CciApiEU"}) == {"api_class": "CciApiEU"}
 
 
 def test_recurses_through_nested_dict() -> None:

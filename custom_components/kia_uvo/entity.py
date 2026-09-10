@@ -1,23 +1,23 @@
-"""Base Entity for Hyundai / Kia Connect integration."""
+"""Base Entity for Kia Connect EU integration."""
 
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from ._vendor.hyundai_kia_connect_api import Vehicle
 
 from .const import BRANDS, DOMAIN, REGIONS
-from .coordinator import HyundaiKiaConnectDataUpdateCoordinator
+from .coordinator import KiaConnectEuDataUpdateCoordinator
 
 
-class HyundaiKiaConnectEntity(
-    CoordinatorEntity[HyundaiKiaConnectDataUpdateCoordinator]
+class KiaConnectEuEntity(
+    CoordinatorEntity[KiaConnectEuDataUpdateCoordinator]
 ):
-    """Class for base entity for Hyundai / Kia Connect integration."""
+    """Class for base entity for Kia Connect EU integration."""
 
     _attr_has_entity_name = True
 
     def __init__(
         self,
-        coordinator: HyundaiKiaConnectDataUpdateCoordinator,
+        coordinator: KiaConnectEuDataUpdateCoordinator,
         vehicle: Vehicle,
     ) -> None:
         """Initialize the base entity."""

@@ -1,4 +1,4 @@
-"""Sensor for Hyundai / Kia Connect integration."""
+"""Sensor for Kia Connect EU integration."""
 
 from __future__ import annotations
 
@@ -29,13 +29,13 @@ from ._vendor.hyundai_kia_connect_api import Vehicle
 from ._vendor.hyundai_kia_connect_api.const import ENGINE_TYPES
 
 from .const import CHARGING_CURRENTS, DOMAIN, DYNAMIC_UNIT
-from .entity import HyundaiKiaConnectEntity
+from .entity import KiaConnectEuEntity
 
 _LOGGER = logging.getLogger(__name__)
 
 
 @dataclass
-class HyundaiKiaSensorEntityDescription(SensorEntityDescription):
+class KiaConnectEuSensorEntityDescription(SensorEntityDescription):
     """A class that describes custom sensor entities."""
 
     exists: Callable[[Vehicle], bool] | None = None
@@ -46,8 +46,8 @@ def _is_electrified(vehicle: Vehicle) -> bool:
     return vehicle.engine_type in (ENGINE_TYPES.EV, ENGINE_TYPES.PHEV)
 
 
-SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaSensorEntityDescription, ...]] = (
-    HyundaiKiaSensorEntityDescription(
+SENSOR_DESCRIPTIONS: Final[tuple[KiaConnectEuSensorEntityDescription, ...]] = (
+    KiaConnectEuSensorEntityDescription(
         key="_total_driving_range",
         translation_key="total_driving_range",
         icon="mdi:road-variant",
@@ -55,7 +55,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaSensorEntityDescription, ...]] = (
         native_unit_of_measurement=DYNAMIC_UNIT,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    HyundaiKiaSensorEntityDescription(
+    KiaConnectEuSensorEntityDescription(
         key="_odometer",
         translation_key="odometer",
         icon="mdi:speedometer",
@@ -63,7 +63,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaSensorEntityDescription, ...]] = (
         device_class=SensorDeviceClass.DISTANCE,
         state_class=SensorStateClass.TOTAL_INCREASING,
     ),
-    HyundaiKiaSensorEntityDescription(
+    KiaConnectEuSensorEntityDescription(
         key="_last_service_distance",
         translation_key="last_service_distance",
         icon="mdi:car-wrench",
@@ -71,7 +71,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaSensorEntityDescription, ...]] = (
         native_unit_of_measurement=DYNAMIC_UNIT,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaSensorEntityDescription(
+    KiaConnectEuSensorEntityDescription(
         key="_next_service_distance",
         translation_key="next_service_distance",
         icon="mdi:car-wrench",
@@ -79,7 +79,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaSensorEntityDescription, ...]] = (
         native_unit_of_measurement=DYNAMIC_UNIT,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaSensorEntityDescription(
+    KiaConnectEuSensorEntityDescription(
         key="car_battery_percentage",
         translation_key="car_battery_percentage",
         icon="mdi:car-battery",
@@ -95,42 +95,42 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaSensorEntityDescription, ...]] = (
         # SoC arrives on the next poll. See #1803.
         exists=lambda _: True,
     ),
-    HyundaiKiaSensorEntityDescription(
+    KiaConnectEuSensorEntityDescription(
         key="last_updated_at",
         translation_key="last_updated_at",
         icon="mdi:update",
         device_class=SensorDeviceClass.TIMESTAMP,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaSensorEntityDescription(
+    KiaConnectEuSensorEntityDescription(
         key="last_scanned_at",
         translation_key="last_scanned_at",
         icon="mdi:cloud-search",
         device_class=SensorDeviceClass.TIMESTAMP,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaSensorEntityDescription(
+    KiaConnectEuSensorEntityDescription(
         key="ev_battery_percentage",
         translation_key="ev_battery_percentage",
         native_unit_of_measurement=PERCENTAGE,
         device_class=SensorDeviceClass.BATTERY,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    HyundaiKiaSensorEntityDescription(
+    KiaConnectEuSensorEntityDescription(
         key="ev_battery_soh_percentage",
         translation_key="ev_battery_soh_percentage",
         native_unit_of_measurement=PERCENTAGE,
         device_class=SensorDeviceClass.BATTERY,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    HyundaiKiaSensorEntityDescription(
+    KiaConnectEuSensorEntityDescription(
         key="ev_battery_remain",
         translation_key="ev_battery_remain",
         native_unit_of_measurement=UnitOfEnergy.KILO_JOULE,
         device_class=SensorDeviceClass.ENERGY_STORAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    HyundaiKiaSensorEntityDescription(
+    KiaConnectEuSensorEntityDescription(
         key="ev_battery_capacity",
         translation_key="ev_battery_capacity",
         native_unit_of_measurement=UnitOfEnergy.KILO_JOULE,
@@ -138,7 +138,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaSensorEntityDescription, ...]] = (
         state_class=SensorStateClass.MEASUREMENT,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaSensorEntityDescription(
+    KiaConnectEuSensorEntityDescription(
         key="_ev_driving_range",
         translation_key="ev_driving_range",
         icon="mdi:road-variant",
@@ -146,21 +146,21 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaSensorEntityDescription, ...]] = (
         native_unit_of_measurement=DYNAMIC_UNIT,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    HyundaiKiaSensorEntityDescription(
+    KiaConnectEuSensorEntityDescription(
         key="_fuel_driving_range",
         translation_key="fuel_driving_range",
         icon="mdi:road-variant",
         device_class=SensorDeviceClass.DISTANCE,
         native_unit_of_measurement=DYNAMIC_UNIT,
     ),
-    HyundaiKiaSensorEntityDescription(
+    KiaConnectEuSensorEntityDescription(
         key="fuel_level",
         translation_key="fuel_level",
         native_unit_of_measurement=PERCENTAGE,
         icon="mdi:fuel",
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    HyundaiKiaSensorEntityDescription(
+    KiaConnectEuSensorEntityDescription(
         key="_air_temperature",
         translation_key="air_temperature",
         native_unit_of_measurement=DYNAMIC_UNIT,
@@ -176,25 +176,25 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaSensorEntityDescription, ...]] = (
             or vehicle._air_temperature is not None
         ),
     ),
-    HyundaiKiaSensorEntityDescription(
+    KiaConnectEuSensorEntityDescription(
         key="ev_estimated_current_charge_duration",
         translation_key="ev_estimated_current_charge_duration",
         icon="mdi:ev-station",
         native_unit_of_measurement=UnitOfTime.MINUTES,
     ),
-    HyundaiKiaSensorEntityDescription(
+    KiaConnectEuSensorEntityDescription(
         key="ev_estimated_fast_charge_duration",
         translation_key="ev_estimated_fast_charge_duration",
         icon="mdi:ev-station",
         native_unit_of_measurement=UnitOfTime.MINUTES,
     ),
-    HyundaiKiaSensorEntityDescription(
+    KiaConnectEuSensorEntityDescription(
         key="ev_estimated_portable_charge_duration",
         translation_key="ev_estimated_portable_charge_duration",
         icon="mdi:ev-station",
         native_unit_of_measurement=UnitOfTime.MINUTES,
     ),
-    HyundaiKiaSensorEntityDescription(
+    KiaConnectEuSensorEntityDescription(
         key="ev_estimated_station_charge_duration",
         translation_key="ev_estimated_station_charge_duration",
         icon="mdi:ev-station",
@@ -209,7 +209,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaSensorEntityDescription, ...]] = (
     # stable EV/PHEV capability instead so a later coordinator poll can
     # publish the range. None -> HA `unknown` until the next poll. See
     # #1842. The same gate applies to both sensors below.
-    HyundaiKiaSensorEntityDescription(
+    KiaConnectEuSensorEntityDescription(
         key="_ev_target_range_charge_AC",
         translation_key="ev_target_range_charge_ac",
         icon="mdi:ev-station",
@@ -219,7 +219,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaSensorEntityDescription, ...]] = (
             _is_electrified(vehicle) or vehicle._ev_target_range_charge_AC is not None
         ),
     ),
-    HyundaiKiaSensorEntityDescription(
+    KiaConnectEuSensorEntityDescription(
         key="_ev_target_range_charge_DC",
         translation_key="ev_target_range_charge_dc",
         icon="mdi:ev-station",
@@ -229,7 +229,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaSensorEntityDescription, ...]] = (
             _is_electrified(vehicle) or vehicle._ev_target_range_charge_DC is not None
         ),
     ),
-    HyundaiKiaSensorEntityDescription(
+    KiaConnectEuSensorEntityDescription(
         key="total_power_consumed",
         translation_key="total_power_consumed",
         icon="mdi:car-electric",
@@ -237,7 +237,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaSensorEntityDescription, ...]] = (
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.TOTAL,
     ),
-    HyundaiKiaSensorEntityDescription(
+    KiaConnectEuSensorEntityDescription(
         key="total_power_regenerated",
         translation_key="total_power_regenerated",
         icon="mdi:car-electric",
@@ -246,38 +246,38 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaSensorEntityDescription, ...]] = (
         state_class=SensorStateClass.TOTAL,
     ),
     # Need to remove km hard coding.  Underlying API needs this fixed first.  EU always does KM.
-    HyundaiKiaSensorEntityDescription(
+    KiaConnectEuSensorEntityDescription(
         key="power_consumption_30d",
         translation_key="power_consumption_30d",
         icon="mdi:car-electric",
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=f"{UnitOfEnergy.WATT_HOUR}/km",
     ),
-    HyundaiKiaSensorEntityDescription(
+    KiaConnectEuSensorEntityDescription(
         key="front_left_seat_status",
         translation_key="front_left_seat_status",
         icon="mdi:car-seat-heater",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaSensorEntityDescription(
+    KiaConnectEuSensorEntityDescription(
         key="front_right_seat_status",
         translation_key="front_right_seat_status",
         icon="mdi:car-seat-heater",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaSensorEntityDescription(
+    KiaConnectEuSensorEntityDescription(
         key="rear_left_seat_status",
         translation_key="rear_left_seat_status",
         icon="mdi:car-seat-heater",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaSensorEntityDescription(
+    KiaConnectEuSensorEntityDescription(
         key="rear_right_seat_status",
         translation_key="rear_right_seat_status",
         icon="mdi:car-seat-heater",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaSensorEntityDescription(
+    KiaConnectEuSensorEntityDescription(
         key="_geocode_name",
         translation_key="geocode_name",
         icon="mdi:map",
@@ -289,39 +289,39 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaSensorEntityDescription, ...]] = (
         # (kia_uvo #1844). Always create; None -> HA `unknown`.
         exists=lambda _: True,
     ),
-    HyundaiKiaSensorEntityDescription(
+    KiaConnectEuSensorEntityDescription(
         key="dtc_count",
         translation_key="dtc_count",
         icon="mdi:alert-circle",
     ),
-    HyundaiKiaSensorEntityDescription(
+    KiaConnectEuSensorEntityDescription(
         key="ev_first_departure_time",
         translation_key="ev_first_departure_time",
         icon="mdi:clock-outline",
     ),
-    HyundaiKiaSensorEntityDescription(
+    KiaConnectEuSensorEntityDescription(
         key="ev_second_departure_time",
         translation_key="ev_second_departure_time",
         icon="mdi:clock-outline",
     ),
-    HyundaiKiaSensorEntityDescription(
+    KiaConnectEuSensorEntityDescription(
         key="ev_off_peak_start_time",
         translation_key="ev_off_peak_start_time",
         icon="mdi:clock-outline",
     ),
-    HyundaiKiaSensorEntityDescription(
+    KiaConnectEuSensorEntityDescription(
         key="ev_off_peak_end_time",
         translation_key="ev_off_peak_end_time",
         icon="mdi:clock-outline",
     ),
-    HyundaiKiaSensorEntityDescription(
+    KiaConnectEuSensorEntityDescription(
         key="ev_charging_current",
         translation_key="ev_charging_current",
         icon="mdi:lightning-bolt-circle",
         native_unit_of_measurement=PERCENTAGE,
         device_class=SensorDeviceClass.POWER_FACTOR,
     ),
-    HyundaiKiaSensorEntityDescription(
+    KiaConnectEuSensorEntityDescription(
         key="ev_charging_power",
         translation_key="ev_charging_power",
         icon="mdi:flash",
@@ -336,13 +336,13 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaSensorEntityDescription, ...]] = (
             _is_electrified(vehicle) or vehicle.ev_charging_power is not None
         ),
     ),
-    HyundaiKiaSensorEntityDescription(
+    KiaConnectEuSensorEntityDescription(
         key="VIN",
         translation_key="vehicle_identification_number",
         icon="mdi:identifier",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaSensorEntityDescription(
+    KiaConnectEuSensorEntityDescription(
         key="_outside_temperature",
         translation_key="outside_temperature",
         icon="mdi:thermometer",
@@ -351,13 +351,13 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaSensorEntityDescription, ...]] = (
         native_unit_of_measurement=DYNAMIC_UNIT,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaSensorEntityDescription(
+    KiaConnectEuSensorEntityDescription(
         key="engine_type",
         translation_key="engine_type",
         icon="mdi:engine",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaSensorEntityDescription(
+    KiaConnectEuSensorEntityDescription(
         key="ev_battery_chiller_rpm",
         translation_key="ev_battery_chiller_rpm",
         icon="mdi:fan",
@@ -365,19 +365,19 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaSensorEntityDescription, ...]] = (
         native_unit_of_measurement="rpm",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaSensorEntityDescription(
+    KiaConnectEuSensorEntityDescription(
         key="ev_first_departure_days",
         translation_key="ev_first_departure_days",
         icon="mdi:calendar-clock",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaSensorEntityDescription(
+    KiaConnectEuSensorEntityDescription(
         key="ev_second_departure_days",
         translation_key="ev_second_departure_days",
         icon="mdi:calendar-clock",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaSensorEntityDescription(
+    KiaConnectEuSensorEntityDescription(
         key="_ev_first_departure_climate_temperature",
         translation_key="ev_first_departure_climate_temperature",
         icon="mdi:thermometer",
@@ -386,7 +386,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaSensorEntityDescription, ...]] = (
         native_unit_of_measurement=DYNAMIC_UNIT,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaSensorEntityDescription(
+    KiaConnectEuSensorEntityDescription(
         key="_ev_second_departure_climate_temperature",
         translation_key="ev_second_departure_climate_temperature",
         icon="mdi:thermometer",
@@ -395,7 +395,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaSensorEntityDescription, ...]] = (
         native_unit_of_measurement=DYNAMIC_UNIT,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaSensorEntityDescription(
+    KiaConnectEuSensorEntityDescription(
         key="ev_battery_pack_voltage",
         translation_key="ev_battery_pack_voltage",
         icon="mdi:car-battery",
@@ -404,7 +404,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaSensorEntityDescription, ...]] = (
         native_unit_of_measurement=UnitOfElectricPotential.VOLT,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaSensorEntityDescription(
+    KiaConnectEuSensorEntityDescription(
         key="ev_battery_temperature_min",
         translation_key="ev_battery_temperature_min",
         icon="mdi:thermometer-low",
@@ -413,7 +413,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaSensorEntityDescription, ...]] = (
         native_unit_of_measurement=DYNAMIC_UNIT,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaSensorEntityDescription(
+    KiaConnectEuSensorEntityDescription(
         key="ev_battery_temperature_max",
         translation_key="ev_battery_temperature_max",
         icon="mdi:thermometer-high",
@@ -422,7 +422,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaSensorEntityDescription, ...]] = (
         native_unit_of_measurement=DYNAMIC_UNIT,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaSensorEntityDescription(
+    KiaConnectEuSensorEntityDescription(
         key="ev_battery_water_temperature",
         translation_key="ev_battery_water_temperature",
         icon="mdi:thermometer-water",
@@ -431,7 +431,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaSensorEntityDescription, ...]] = (
         native_unit_of_measurement=DYNAMIC_UNIT,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaSensorEntityDescription(
+    KiaConnectEuSensorEntityDescription(
         key="ev_power_consumption_air_conditioning",
         translation_key="ev_power_consumption_air_conditioning",
         icon="mdi:air-conditioner",
@@ -440,7 +440,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaSensorEntityDescription, ...]] = (
         native_unit_of_measurement=UnitOfPower.WATT,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaSensorEntityDescription(
+    KiaConnectEuSensorEntityDescription(
         key="ev_power_consumption_battery_cooling",
         translation_key="ev_power_consumption_battery_cooling",
         icon="mdi:snowflake",
@@ -449,7 +449,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaSensorEntityDescription, ...]] = (
         native_unit_of_measurement=UnitOfPower.WATT,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaSensorEntityDescription(
+    KiaConnectEuSensorEntityDescription(
         key="ev_power_consumption_battery_heater",
         translation_key="ev_power_consumption_battery_heater",
         icon="mdi:radiator",
@@ -458,7 +458,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaSensorEntityDescription, ...]] = (
         native_unit_of_measurement=UnitOfPower.WATT,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    HyundaiKiaSensorEntityDescription(
+    KiaConnectEuSensorEntityDescription(
         key="location_last_updated_at",
         translation_key="location_last_updated_at",
         icon="mdi:map-clock",
@@ -475,7 +475,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaSensorEntityDescription, ...]] = (
     # pressure. A None pressure -> HA `unknown` until a poll
     # catches the car driving. The same gate applies to all four
     # tire_pressure_* sensors below.
-    HyundaiKiaSensorEntityDescription(
+    KiaConnectEuSensorEntityDescription(
         key="tire_pressure_front_left",
         translation_key="tire_pressure_front_left",
         device_class=SensorDeviceClass.PRESSURE,
@@ -486,7 +486,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaSensorEntityDescription, ...]] = (
             or vehicle.tire_pressure_unit is not None
         ),
     ),
-    HyundaiKiaSensorEntityDescription(
+    KiaConnectEuSensorEntityDescription(
         key="tire_pressure_front_right",
         translation_key="tire_pressure_front_right",
         device_class=SensorDeviceClass.PRESSURE,
@@ -497,7 +497,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaSensorEntityDescription, ...]] = (
             or vehicle.tire_pressure_unit is not None
         ),
     ),
-    HyundaiKiaSensorEntityDescription(
+    KiaConnectEuSensorEntityDescription(
         key="tire_pressure_rear_left",
         translation_key="tire_pressure_rear_left",
         device_class=SensorDeviceClass.PRESSURE,
@@ -508,7 +508,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaSensorEntityDescription, ...]] = (
             or vehicle.tire_pressure_unit is not None
         ),
     ),
-    HyundaiKiaSensorEntityDescription(
+    KiaConnectEuSensorEntityDescription(
         key="tire_pressure_rear_right",
         translation_key="tire_pressure_rear_right",
         device_class=SensorDeviceClass.PRESSURE,
@@ -519,7 +519,7 @@ SENSOR_DESCRIPTIONS: Final[tuple[HyundaiKiaSensorEntityDescription, ...]] = (
             or vehicle.tire_pressure_unit is not None
         ),
     ),
-    HyundaiKiaSensorEntityDescription(
+    KiaConnectEuSensorEntityDescription(
         key="drive_mode",
         translation_key="drive_mode",
         icon="mdi:car-cog",
@@ -556,7 +556,7 @@ async def async_setup_entry(
             )
             if create:
                 entities.append(
-                    HyundaiKiaConnectSensor(coordinator, description, vehicle)
+                    KiaConnectEuSensor(coordinator, description, vehicle)
                 )
         if vehicle.daily_stats:
             entities.append(
@@ -579,8 +579,8 @@ async def async_setup_entry(
 PARALLEL_UPDATES = 0
 
 
-class HyundaiKiaConnectSensor(SensorEntity, HyundaiKiaConnectEntity):
-    """Hyundai / Kia Connect sensor class."""
+class KiaConnectEuSensor(SensorEntity, KiaConnectEuEntity):
+    """Kia Connect EU sensor class."""
 
     def __init__(
         self, coordinator, description: SensorEntityDescription, vehicle: Vehicle
@@ -634,7 +634,7 @@ class HyundaiKiaConnectSensor(SensorEntity, HyundaiKiaConnectEntity):
             return {"DTC Text": self.vehicle.dtc_descriptions}
 
 
-class VehicleEntity(SensorEntity, HyundaiKiaConnectEntity):
+class VehicleEntity(SensorEntity, KiaConnectEuEntity):
     _attr_translation_key = "data"
 
     def __init__(self, coordinator, vehicle: Vehicle):
@@ -660,7 +660,7 @@ class VehicleEntity(SensorEntity, HyundaiKiaConnectEntity):
         return f"{DOMAIN}-all-data-{self.vehicle.id}"
 
 
-class DailyDrivingStatsEntity(SensorEntity, HyundaiKiaConnectEntity):
+class DailyDrivingStatsEntity(SensorEntity, KiaConnectEuEntity):
     _attr_translation_key = "daily_driving_stats"
 
     def __init__(self, coordinator, vehicle: Vehicle):
@@ -696,7 +696,7 @@ class DailyDrivingStatsEntity(SensorEntity, HyundaiKiaConnectEntity):
         return UnitOfTime.DAYS
 
 
-class TodaysDailyDrivingStatsEntity(SensorEntity, HyundaiKiaConnectEntity):
+class TodaysDailyDrivingStatsEntity(SensorEntity, KiaConnectEuEntity):
     _attr_translation_key = "todays_daily_driving_stats"
 
     def __init__(self, coordinator, vehicle: Vehicle):
@@ -744,7 +744,7 @@ class TodaysDailyDrivingStatsEntity(SensorEntity, HyundaiKiaConnectEntity):
         return f"{DOMAIN}-todays-daily-driving-stats-{self.vehicle.id}"
 
 
-class SVMStatusSensor(SensorEntity, HyundaiKiaConnectEntity):
+class SVMStatusSensor(SensorEntity, KiaConnectEuEntity):
     """SVM capture metadata sensor (companion to the SVM image entity).
 
     The image entity cannot expose extra state attributes (ImageEntity

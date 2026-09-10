@@ -9,5 +9,5 @@
   "issue_tracker": "https://github.com/aetios80/ha_kia/issues",
   "loggers": ["kia_uvo"],
   "requirements": ["pycryptodome>=3.23.0", "tzdata>=2026.3"],
-  "version": "4.0.0"
+  "version": "4.0.2"
 }

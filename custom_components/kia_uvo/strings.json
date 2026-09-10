@@ -1,36 +1,35 @@
 {
-  "title": "[%key:component::hyundai_kia_connect::title%]",
+  "title": "Kia Connect EU",
   "config": {
     "step": {
       "credentials_password": {
-        "title": "[%key:component::hyundai_kia_connect::config::step::credentials_password::title%]",
-        "description": "[%key:component::hyundai_kia_connect::config::step::credentials_password::description%]",
+        "title": "Kia Connect EU credentials",
+        "description": "Independent, unaffiliated integration. Kia may restrict this use.",
         "data": {
-          "username": "[%key:common::config_flow::data::username%]",
-          "password": "[%key:component::hyundai_kia_connect::config::step::credentials_password::data::password%]",
-          "pin": "[%key:common::config_flow::data::pin%]"
+          "username": "Username",
+          "password": "Password",
+          "pin": "Pin"
         }
       },
       "credentials_token": {
-        "title": "[%key:component::hyundai_kia_connect::config::step::credentials_token::title%]",
-        "description": "[%key:component::hyundai_kia_connect::config::step::credentials_token::description%]",
+        "title": "Kia Connect EU - Credentials",
+        "description": "Enter your account credentials. Europe requires special token work — refer to the README.",
         "data": {
-          "username": "[%key:common::config_flow::data::username%]",
-          "password": "[%key:component::hyundai_kia_connect::config::step::credentials_token::data::password%]",
-          "pin": "[%key:common::config_flow::data::pin%]"
+          "username": "Username",
+          "password": "Token",
+          "pin": "Pin"
         }
       },
       "user": {
-        "title": "[%key:component::hyundai_kia_connect::config::step::user::title%]",
-        "description": "[%key:component::hyundai_kia_connect::config::step::user::description%]",
+        "title": "Kia Connect EU",
+        "description": "Select the data backend. Kia Connect CCI supports vehicle data and remote commands. Official Data API is prepared but unavailable until Kia grants third-party access.",
         "data": {
-          "region": "[%key:component::hyundai_kia_connect::config::step::user::data::region%]",
-          "brand": "[%key:component::hyundai_kia_connect::config::step::user::data::brand%]"
+          "data_backend": "Data backend"
         }
       },
       "reauth_confirm": {
-        "title": "[%key:component::hyundai_kia_connect::config::step::reauth_confirm::title%]",
-        "description": "[%key:component::hyundai_kia_connect::config::step::reauth_confirm::description%]"
+        "title": "Kia Connect EU - Reauthentication",
+        "description": "Your account is unable to authenticate. Click Submit to re-setup."
       },
       "select_otp_method": {
         "title": "Select OTP Method",
@@ -47,41 +46,358 @@
         }
       },
       "reconfigure": {
-        "title": "Hyundai / Kia Connect - Reconfigure",
+        "title": "Kia Connect EU - Reconfigure",
         "data": {
           "reconfigure_choice": "What would you like to do?"
         }
       },
       "reconfigure_pin": {
-        "title": "Hyundai / Kia Connect - Set PIN",
-        "description": "Enter the PIN required to authorize remote commands (lock, unlock, climate) in the Kia/Hyundai Connect app.",
+        "title": "Kia Connect EU - Set PIN",
+        "description": "Enter the PIN required to authorize remote commands (lock, unlock, climate) in the Kia Connect app.",
         "data": {
           "pin": "PIN"
         }
       }
     },
     "abort": {
-      "already_configured": "[%key:common::config_flow::abort::already_configured_device%]",
-      "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]",
+      "already_configured": "Device is already configured",
+      "official_data_api_unavailable": "Official Data API is not available until Kia grants third-party access. Select Kia Connect CCI to continue.",
+      "reauth_successful": "Successfully reauthenticated",
       "reconfigure_successful": "Reconfiguration was successful"
     },
     "error": {
-      "invalid_auth": "[%key:component::hyundai_kia_connect::config::error::invalid_auth%]",
-      "invalid_credentials": "[%key:component::hyundai_kia_connect::config::error::invalid_credentials%]",
-      "unknown": "[%key:component::hyundai_kia_connect::config::error::unknown%]"
+      "invalid_auth": "Kia Connect authentication was rejected.",
+      "invalid_credentials": "Invalid username or password",
+      "unknown": "Unexpected error"
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "[%key:component::hyundai_kia_connect::options::step::init::title%]",
+        "title": "Kia Connect EU - Configuration",
         "data": {
-          "scan_interval": "[%key:component::hyundai_kia_connect::options::step::init::data::scan_interval%]",
-          "force_refresh": "[%key:component::hyundai_kia_connect::options::step::init::data::force_refresh%]",
-          "no_force_refresh_hour_start": "[%key:component::hyundai_kia_connect::options::step::init::data::no_force_refresh_hour_start%]",
-          "no_force_refresh_hour_finish": "[%key:component::hyundai_kia_connect::options::step::init::data::no_force_refresh_hour_finish%]",
-          "enable_geolocation_entity": "[%key:component::hyundai_kia_connect::options::step::init::data::enable_geolocation_entity%]",
-          "use_email_with_geocode_api": "[%key:component::hyundai_kia_connect::options::step::init::data::use_email_with_geocode_api%]"
+          "scan_interval": "Scan Interval (min)",
+          "force_refresh": "Force Refresh Interval (min), use caution setting this too low as it consumes 12v battery",
+          "no_force_refresh_hour_start": "No Force Refresh Start Hour",
+          "no_force_refresh_hour_finish": "No Force Refresh Finish Hour",
+          "enable_geolocation_entity": "Enable Geolocation Entity using OpenStreetMap",
+          "use_email_with_geocode_api": "Use your Kia email address for Geocode API. Increases polling ability but provides it to the API."
+        }
+      }
+    }
+  },
+  "services": {
+    "force_update": {
+      "name": "Force Update",
+      "description": "Force your vehicle to update its data. All vehicles on the same account as the vehicle selected will be updated.",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle",
+          "description": "Target vehicle"
+        }
+      }
+    },
+    "update": {
+      "name": "Update",
+      "description": "Update vehicle data from service cache",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle",
+          "description": "Target vehicle"
+        }
+      }
+    },
+    "start_climate": {
+      "name": "Start Climate",
+      "description": "Please use cautiously - Starts climate and engine. Not all options are available on all cars or regions. Use your car's mobile app as a guide and match the options available in your car.",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle",
+          "description": "Target vehicle"
+        },
+        "duration": {
+          "name": "Duration",
+          "description": "How long to run the climate system. Maximum duration may be limited by Model/Year/Region."
+        },
+        "climate": {
+          "name": "Climate",
+          "description": "Enable the HVAC System"
+        },
+        "temperature": {
+          "name": "Temperature",
+          "description": "Set temperature of climate control. Unit is specific to region."
+        },
+        "defrost": {
+          "name": "Defrost",
+          "description": "Front Windshield Defrost"
+        },
+        "heating": {
+          "name": "Heating",
+          "description": "Heated features like front/rear windows and side mirrors. Europe uses separate steering wheel setting."
+        },
+        "steering_wheel": {
+          "name": "Steering Wheel Heat",
+          "description": "Heating level for the steering wheel. Europe only, other regions use a heating setting."
+        },
+        "flseat": {
+          "name": "Front Left Seat",
+          "description": "Front Left Seat Heat Cool Setting"
+        },
+        "frseat": {
+          "name": "Front Right Seat",
+          "description": "Front Right Seat Heat Cool Setting"
+        },
+        "rlseat": {
+          "name": "Rear Left Seat",
+          "description": "Rear Left Seat Heat Cool Setting"
+        },
+        "rrseat": {
+          "name": "Rear Right Seat",
+          "description": "Rear Right Seat Heat Cool Setting"
+        }
+      }
+    },
+    "stop_climate": {
+      "name": "Stop Climate",
+      "description": "Please use cautiously - stop car and climate",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle",
+          "description": "Target vehicle"
+        }
+      }
+    },
+    "stop_charge": {
+      "name": "Stop Charge",
+      "description": "Stop charging",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle",
+          "description": "Target vehicle"
+        }
+      }
+    },
+    "start_charge": {
+      "name": "Start charge",
+      "description": "Start charging",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle",
+          "description": "Target vehicle"
+        }
+      }
+    },
+    "lock": {
+      "name": "Lock",
+      "description": "Lock the vehicle",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle",
+          "description": "Target vehicle"
+        }
+      }
+    },
+    "unlock": {
+      "name": "Unlock",
+      "description": "Unlock the vehicle",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle",
+          "description": "Target vehicle"
+        }
+      }
+    },
+    "close_charge_port": {
+      "name": "Close Charge Port",
+      "description": "Close Charging Port",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle",
+          "description": "Target vehicle"
+        }
+      }
+    },
+    "open_charge_port": {
+      "name": "Open Charging Port",
+      "description": "Open Charge Port",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle",
+          "description": "Target vehicle"
+        }
+      }
+    },
+    "set_charge_limits": {
+      "name": "Set Charge Limits",
+      "description": "sets ac and dc charge capacity limits",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle",
+          "description": "Target vehicle"
+        },
+        "dc_limit": {
+          "name": "DC Charge limit",
+          "description": "max charge capacity using DC charger"
+        },
+        "ac_limit": {
+          "name": "AC Charge limit",
+          "description": "max charge capacity using AC charger"
+        }
+      }
+    },
+    "set_charging_current": {
+      "name": "Set AC charging current",
+      "description": "Sets the AC charging current capacity",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle",
+          "description": "Target vehicle"
+        },
+        "level": {
+          "name": "Charging current",
+          "description": "Charging current capacity percentage"
+        }
+      }
+    },
+    "schedule_charging_and_climate": {
+      "name": "Schedule charging and climate",
+      "description": "Please use cautiously - Schedule charging and climate. Not all options are available on all cars or regions. Use your car's mobile app as a guide and match the options available in your car.",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle",
+          "description": "Target vehicle"
+        },
+        "charging_enabled": {
+          "name": "Scheduled charging",
+          "description": "Enable scheduled Charging"
+        },
+        "first_departure_enabled": {
+          "name": "1st departure",
+          "description": "Enable first departure"
+        },
+        "first_departure_days": {
+          "name": "1st departure days",
+          "description": "Days which first departure applies to. Cannot be empty."
+        },
+        "first_departure_time": {
+          "name": "1st departure time",
+          "description": "First departure time. Use 00, 10, 20, 30, 40 or 50 for minute, and 00 for second"
+        },
+        "second_departure_enabled": {
+          "name": "2nd departure",
+          "description": "Enable second departure"
+        },
+        "second_departure_days": {
+          "name": "2nd departure days",
+          "description": "Days which second departure applies to. Cannot be empty."
+        },
+        "second_departure_time": {
+          "name": "2nd departure time",
+          "description": "Second departure time. Use 00, 10, 20, 30, 40 or 50 for minute, and 00 for second"
+        },
+        "off_peak_start_time": {
+          "name": "Off-peak start time",
+          "description": "Off-peak start time. Use 00, 10, 20, 30, 40 or 50 for minute, and 00 for second"
+        },
+        "off_peak_end_time": {
+          "name": "Off-peak end time",
+          "description": "Off-peak end time. Use 00, 10, 20, 30, 40 or 50 for minute, and 00 for second"
+        },
+        "off_peak_charge_only_enabled": {
+          "name": "Off-peak tariffs only",
+          "description": "If true, charge only during the defined off-peak time, otherwise, charging may start before the off-peak time"
+        },
+        "climate_enabled": {
+          "name": "Climate",
+          "description": "Enable the HVAC System prior to departure"
+        },
+        "temperature": {
+          "name": "Temperature",
+          "description": "Set temperature of climate control. Unit is specific to region."
+        },
+        "temperature_unit": {
+          "name": "Temperature Unit",
+          "description": "Set temperature unit of climate control. Unit is specific to region."
+        },
+        "defrost": {
+          "name": "Defrost",
+          "description": "Front Windshield Defrost prior to departure"
+        }
+      }
+    },
+    "start_hazard_lights": {
+      "name": "Turn on the hazard lights",
+      "description": "Turn on the hazard lights for 30 seconds.",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle",
+          "description": "Target vehicle"
+        }
+      }
+    },
+    "start_hazard_lights_and_horn": {
+      "name": "Turn on the hazard lights and horn",
+      "description": "Turn on the hazard lights and horn for 30 seconds.",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle",
+          "description": "Target vehicle"
+        }
+      }
+    },
+    "start_valet_mode": {
+      "name": "Start valet mode",
+      "description": "Activate valet mode. If remote valet mode is activated while driving, the vehicle display screen is deactivated.",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle",
+          "description": "Target vehicle"
+        }
+      }
+    },
+    "stop_valet_mode": {
+      "name": "Stop valet mode",
+      "description": "Deactivate valet mode.",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle",
+          "description": "Target vehicle"
+        }
+      }
+    },
+    "set_windows": {
+      "name": "Set Windows",
+      "description": "Control the windows of the vehicle. Open or close windows as needed.",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle",
+          "description": "Target vehicle"
+        },
+        "flwindow": {
+          "name": "Front Left Window",
+          "description": "Action for the front left window"
+        },
+        "frwindow": {
+          "name": "Front Right Window",
+          "description": "Action for the front right window"
+        },
+        "rlwindow": {
+          "name": "Rear Left Window",
+          "description": "Action for the rear left window"
+        },
+        "rrwindow": {
+          "name": "Rear Right Window",
+          "description": "Action for the rear right window"
+        }
+      }
+    },
+    "capture_svm_image": {
+      "name": "Capture SVM Image",
+      "description": "Trigger a fresh Surround View Monitor capture. The vehicle wakes up and captures a 360 image.",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle",
+          "description": "Target vehicle"
         }
       }
     }

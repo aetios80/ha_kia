@@ -1,4 +1,4 @@
-"""Button for Hyundai / Kia Connect integration."""
+"""Button for Kia Connect EU integration."""
 
 from __future__ import annotations
 
@@ -14,55 +14,55 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from ._vendor.hyundai_kia_connect_api import Vehicle
 
 from .const import DOMAIN
-from .coordinator import HyundaiKiaConnectDataUpdateCoordinator
-from .entity import HyundaiKiaConnectEntity
+from .coordinator import KiaConnectEuDataUpdateCoordinator
+from .entity import KiaConnectEuEntity
 
 _LOGGER = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True, kw_only=True)
-class HyundaiKiaButtonDescription(ButtonEntityDescription):
+class KiaConnectEuButtonDescription(ButtonEntityDescription):
     press_action: str
     exists_fn: Callable[[Vehicle], bool] = lambda _: True
     enabled_fn: Callable[[Vehicle], bool] = lambda _: True
 
 
-BUTTON_DESCRIPTIONS: Final[tuple[HyundaiKiaButtonDescription, ...]] = (
-    HyundaiKiaButtonDescription(
+BUTTON_DESCRIPTIONS: Final[tuple[KiaConnectEuButtonDescription, ...]] = (
+    KiaConnectEuButtonDescription(
         key="force_refresh",
         translation_key="force_refresh",
         icon="mdi:refresh",
         press_action="async_force_refresh_vehicle",
     ),
-    HyundaiKiaButtonDescription(
+    KiaConnectEuButtonDescription(
         key="start_hazard_lights",
         translation_key="start_hazard_lights",
         icon="mdi:hazard-lights",
         press_action="async_start_hazard_lights",
         enabled_fn=lambda _: False,
     ),
-    HyundaiKiaButtonDescription(
+    KiaConnectEuButtonDescription(
         key="start_hazard_lights_and_horn",
         translation_key="start_hazard_lights_and_horn",
         icon="mdi:car-emergency",
         press_action="async_start_hazard_lights_and_horn",
         enabled_fn=lambda _: False,
     ),
-    HyundaiKiaButtonDescription(
+    KiaConnectEuButtonDescription(
         key="start_valet_mode",
         translation_key="start_valet_mode",
         icon="mdi:key-variant",
         press_action="async_start_valet_mode",
         exists_fn=lambda vehicle: vehicle.supports_valet_mode,
     ),
-    HyundaiKiaButtonDescription(
+    KiaConnectEuButtonDescription(
         key="stop_valet_mode",
         translation_key="stop_valet_mode",
         icon="mdi:key-variant",
         press_action="async_stop_valet_mode",
         exists_fn=lambda vehicle: vehicle.supports_valet_mode,
     ),
-    HyundaiKiaButtonDescription(
+    KiaConnectEuButtonDescription(
         key="open_all_windows",
         translation_key="open_all_windows",
         icon="mdi:window-maximize",
@@ -72,7 +72,7 @@ BUTTON_DESCRIPTIONS: Final[tuple[HyundaiKiaButtonDescription, ...]] = (
             and vehicle.front_left_window_is_open is not None
         ),
     ),
-    HyundaiKiaButtonDescription(
+    KiaConnectEuButtonDescription(
         key="close_all_windows",
         translation_key="close_all_windows",
         icon="mdi:window-minimize",
@@ -82,7 +82,7 @@ BUTTON_DESCRIPTIONS: Final[tuple[HyundaiKiaButtonDescription, ...]] = (
             and vehicle.front_left_window_is_open is not None
         ),
     ),
-    HyundaiKiaButtonDescription(
+    KiaConnectEuButtonDescription(
         key="vent_all_windows",
         translation_key="vent_all_windows",
         icon="mdi:window-open-variant",
@@ -92,7 +92,7 @@ BUTTON_DESCRIPTIONS: Final[tuple[HyundaiKiaButtonDescription, ...]] = (
             and vehicle.front_left_window_is_open is not None
         ),
     ),
-    HyundaiKiaButtonDescription(
+    KiaConnectEuButtonDescription(
         key="capture_svm_image",
         translation_key="capture_svm_image",
         icon="mdi:camera-iris",
@@ -114,7 +114,7 @@ async def async_setup_entry(
         for description in BUTTON_DESCRIPTIONS:
             if not description.exists_fn(vehicle):
                 continue
-            entities.append(HyundaiKiaConnectButton(coordinator, description, vehicle))
+            entities.append(KiaConnectEuButton(coordinator, description, vehicle))
 
     async_add_entities(entities)
 
@@ -122,15 +122,15 @@ async def async_setup_entry(
 PARALLEL_UPDATES = 1
 
 
-class HyundaiKiaConnectButton(ButtonEntity, HyundaiKiaConnectEntity):
+class KiaConnectEuButton(ButtonEntity, KiaConnectEuEntity):
     def __init__(
         self,
-        coordinator: HyundaiKiaConnectDataUpdateCoordinator,
-        description: HyundaiKiaButtonDescription,
+        coordinator: KiaConnectEuDataUpdateCoordinator,
+        description: KiaConnectEuButtonDescription,
         vehicle: Vehicle,
     ) -> None:
-        HyundaiKiaConnectEntity.__init__(self, coordinator, vehicle)
-        self.entity_description: HyundaiKiaButtonDescription = description
+        KiaConnectEuEntity.__init__(self, coordinator, vehicle)
+        self.entity_description: KiaConnectEuButtonDescription = description
         self._key = description.key
         self._attr_unique_id = f"{DOMAIN}_{vehicle.id}_{self._key}"
         self._attr_icon = description.icon

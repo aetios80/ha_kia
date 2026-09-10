@@ -9,14 +9,12 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import device_registry
 from ._vendor.hyundai_kia_connect_api import (
     ClimateRequestOptions,
-    POICoord,
-    POIInfo,
     ScheduleChargingClimateRequestOptions,
     WindowRequestOptions,
 )
 
 from .const import DOMAIN, OffPeakChargingMode
-from .coordinator import HyundaiKiaConnectDataUpdateCoordinator
+from .coordinator import KiaConnectEuDataUpdateCoordinator
 
 SERVICE_UPDATE = "update"
 SERVICE_FORCE_UPDATE = "force_update"
@@ -36,7 +34,6 @@ SERVICE_START_HAZARD_LIGHTS_AND_HORN = "start_hazard_lights_and_horn"
 SERVICE_START_VALET_MODE = "start_valet_mode"
 SERVICE_STOP_VALET_MODE = "stop_valet_mode"
 SERVICE_SET_WINDOWS = "set_windows"
-SERVICE_SET_NAVIGATION = "set_navigation"
 SERVICE_SET_OFF_PEAK_CHARGING = "set_off_peak_charging"
 SERVICE_CAPTURE_SVM_IMAGE = "capture_svm_image"
 
@@ -59,7 +56,6 @@ SUPPORTED_SERVICES = (
     SERVICE_START_VALET_MODE,
     SERVICE_STOP_VALET_MODE,
     SERVICE_SET_WINDOWS,
-    SERVICE_SET_NAVIGATION,
     SERVICE_SET_OFF_PEAK_CHARGING,
     SERVICE_CAPTURE_SVM_IMAGE,
 )
@@ -69,14 +65,13 @@ _LOGGER = logging.getLogger(__name__)
 
 @callback
 def async_setup_services(hass: HomeAssistant) -> bool:
-    """Set up services for Hyundai Kia Connect"""
+    """Set up services for Kia Connect EU."""
 
     async def async_handle_force_update(call: ServiceCall) -> None:
         coordinator = _get_coordinator_from_device(hass, call)
         await coordinator.async_force_update_all()
 
     async def async_handle_update(call: ServiceCall) -> None:
-        _LOGGER.debug(f"Call:{call.data}")
         coordinator = _get_coordinator_from_device(hass, call)
         await coordinator.async_update_all()
 
@@ -314,25 +309,6 @@ def async_setup_services(hass: HomeAssistant) -> bool:
         vehicle_id = _get_vehicle_id_from_device(hass, call)
         await coordinator.async_stop_valet_mode(vehicle_id)
 
-    async def async_handle_set_navigation(call: ServiceCall) -> None:
-        coordinator = _get_coordinator_from_device(hass, call)
-        vehicle_id = _get_vehicle_id_from_device(hass, call)
-        latitude = call.data["latitude"]
-        longitude = call.data["longitude"]
-        name = call.data["name"]
-        address = call.data.get("address", "")
-        zip_code = call.data.get("zip_code", "")
-        place_id = call.data.get("place_id", "")
-
-        poi = POIInfo(
-            coord=POICoord(lat=float(latitude), lon=float(longitude)),
-            name=name,
-            addr=address,
-            zip=zip_code,
-            place_id=place_id,
-        )
-        await coordinator.async_set_navigation(vehicle_id, [poi])
-
     async def async_handle_capture_svm_image(call: ServiceCall) -> None:
         coordinator = _get_coordinator_from_device(hass, call)
         vehicle_id = _get_vehicle_id_from_device(hass, call)
@@ -361,7 +337,6 @@ def async_setup_services(hass: HomeAssistant) -> bool:
         SERVICE_START_VALET_MODE: async_handle_start_valet_mode,
         SERVICE_STOP_VALET_MODE: async_handle_stop_valet_mode,
         SERVICE_SET_WINDOWS: async_handle_set_windows,
-        SERVICE_SET_NAVIGATION: async_handle_set_navigation,
         SERVICE_SET_OFF_PEAK_CHARGING: async_handle_set_off_peak_charging,
         SERVICE_CAPTURE_SVM_IMAGE: async_handle_capture_svm_image,
     }
@@ -381,7 +356,7 @@ def _get_vehicle_id_from_device(hass: HomeAssistant, call: ServiceCall) -> str:
     coordinators = list(hass.data[DOMAIN].keys())
     if len(coordinators) == 1:
         coordinator = cast(
-            HyundaiKiaConnectDataUpdateCoordinator, hass.data[DOMAIN][coordinators[0]]
+            KiaConnectEuDataUpdateCoordinator, hass.data[DOMAIN][coordinators[0]]
         )
         vehicles = coordinator.vehicle_manager.vehicles
         if len(vehicles) == 1:
@@ -398,11 +373,11 @@ def _get_vehicle_id_from_device(hass: HomeAssistant, call: ServiceCall) -> str:
 
 def _get_coordinator_from_device(
     hass: HomeAssistant, call: ServiceCall
-) -> HyundaiKiaConnectDataUpdateCoordinator:
+) -> KiaConnectEuDataUpdateCoordinator:
     coordinators = list(hass.data[DOMAIN].keys())
     if len(coordinators) == 1:
         return cast(
-            HyundaiKiaConnectDataUpdateCoordinator, hass.data[DOMAIN][coordinators[0]]
+            KiaConnectEuDataUpdateCoordinator, hass.data[DOMAIN][coordinators[0]]
         )
     else:
         device_entry = device_registry.async_get(hass).async_get(
@@ -432,6 +407,6 @@ def _get_coordinator_from_device(
             raise HomeAssistantError(f"Config entry {config_entry_id} not found")
         config_entry_unique_id = config_entry.unique_id
         return cast(
-            HyundaiKiaConnectDataUpdateCoordinator,
+            KiaConnectEuDataUpdateCoordinator,
             hass.data[DOMAIN][config_entry_unique_id],
         )

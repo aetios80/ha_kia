@@ -1,4 +1,4 @@
-"""Switch for Hyundai / Kia Connect integration."""
+"""Switch for Kia Connect EU integration."""
 
 from __future__ import annotations
 
@@ -16,22 +16,22 @@ from homeassistant.helpers.restore_state import RestoreEntity
 from ._vendor.hyundai_kia_connect_api import Vehicle
 
 from .const import DOMAIN
-from .coordinator import HyundaiKiaConnectDataUpdateCoordinator
-from .entity import HyundaiKiaConnectEntity
+from .coordinator import KiaConnectEuDataUpdateCoordinator
+from .entity import KiaConnectEuEntity
 
 _LOGGER = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True, kw_only=True)
-class HyundaiKiaSwitchDescription(SwitchEntityDescription):
+class KiaConnectEuSwitchDescription(SwitchEntityDescription):
     value_fn: Callable[[Vehicle], bool | None]
     exists_fn: Callable[[Vehicle], bool]
-    on_fn: Callable[[HyundaiKiaConnectDataUpdateCoordinator, str], Awaitable[None]]
-    off_fn: Callable[[HyundaiKiaConnectDataUpdateCoordinator, str], Awaitable[None]]
+    on_fn: Callable[[KiaConnectEuDataUpdateCoordinator, str], Awaitable[None]]
+    off_fn: Callable[[KiaConnectEuDataUpdateCoordinator, str], Awaitable[None]]
 
 
-SWITCH_DESCRIPTIONS: Final[tuple[HyundaiKiaSwitchDescription, ...]] = (
-    HyundaiKiaSwitchDescription(
+SWITCH_DESCRIPTIONS: Final[tuple[KiaConnectEuSwitchDescription, ...]] = (
+    KiaConnectEuSwitchDescription(
         key="ev_battery_is_charging",
         translation_key="ev_charging",
         icon="mdi:ev-station",
@@ -40,7 +40,7 @@ SWITCH_DESCRIPTIONS: Final[tuple[HyundaiKiaSwitchDescription, ...]] = (
         on_fn=lambda coordinator, vid: coordinator.async_start_charge(vid),
         off_fn=lambda coordinator, vid: coordinator.async_stop_charge(vid),
     ),
-    HyundaiKiaSwitchDescription(
+    KiaConnectEuSwitchDescription(
         key="air_control_is_on",
         translation_key="climate",
         icon="mdi:air-conditioner",
@@ -50,7 +50,7 @@ SWITCH_DESCRIPTIONS: Final[tuple[HyundaiKiaSwitchDescription, ...]] = (
         off_fn=lambda coordinator, vid: coordinator.async_stop_climate(vid),
     ),
     # Departure schedule switches
-    HyundaiKiaSwitchDescription(
+    KiaConnectEuSwitchDescription(
         key="ev_first_departure_enabled",
         translation_key="ev_first_departure_enabled",
         icon="mdi:clock-outline",
@@ -63,7 +63,7 @@ SWITCH_DESCRIPTIONS: Final[tuple[HyundaiKiaSwitchDescription, ...]] = (
             vid, 1, False
         ),
     ),
-    HyundaiKiaSwitchDescription(
+    KiaConnectEuSwitchDescription(
         key="ev_second_departure_enabled",
         translation_key="ev_second_departure_enabled",
         icon="mdi:clock-outline",
@@ -76,7 +76,7 @@ SWITCH_DESCRIPTIONS: Final[tuple[HyundaiKiaSwitchDescription, ...]] = (
             vid, 2, False
         ),
     ),
-    HyundaiKiaSwitchDescription(
+    KiaConnectEuSwitchDescription(
         key="ev_first_departure_climate_enabled",
         translation_key="ev_first_departure_climate_enabled",
         icon="mdi:car-climate",
@@ -91,7 +91,7 @@ SWITCH_DESCRIPTIONS: Final[tuple[HyundaiKiaSwitchDescription, ...]] = (
             vid, 1, False
         ),
     ),
-    HyundaiKiaSwitchDescription(
+    KiaConnectEuSwitchDescription(
         key="ev_second_departure_climate_enabled",
         translation_key="ev_second_departure_climate_enabled",
         icon="mdi:car-climate",
@@ -106,7 +106,7 @@ SWITCH_DESCRIPTIONS: Final[tuple[HyundaiKiaSwitchDescription, ...]] = (
             vid, 2, False
         ),
     ),
-    HyundaiKiaSwitchDescription(
+    KiaConnectEuSwitchDescription(
         key="ev_first_departure_climate_defrost",
         translation_key="ev_first_departure_climate_defrost",
         icon="mdi:car-defrost-rear",
@@ -121,7 +121,7 @@ SWITCH_DESCRIPTIONS: Final[tuple[HyundaiKiaSwitchDescription, ...]] = (
             vid, 1, False
         ),
     ),
-    HyundaiKiaSwitchDescription(
+    KiaConnectEuSwitchDescription(
         key="ev_second_departure_climate_defrost",
         translation_key="ev_second_departure_climate_defrost",
         icon="mdi:car-defrost-rear",
@@ -137,7 +137,7 @@ SWITCH_DESCRIPTIONS: Final[tuple[HyundaiKiaSwitchDescription, ...]] = (
         ),
     ),
     # Charging schedule switches
-    HyundaiKiaSwitchDescription(
+    KiaConnectEuSwitchDescription(
         key="ev_schedule_charge_enabled",
         translation_key="ev_schedule_charge_enabled",
         icon="mdi:calendar-clock",
@@ -150,7 +150,7 @@ SWITCH_DESCRIPTIONS: Final[tuple[HyundaiKiaSwitchDescription, ...]] = (
             vid, False
         ),
     ),
-    HyundaiKiaSwitchDescription(
+    KiaConnectEuSwitchDescription(
         key="ev_off_peak_charge_only_enabled",
         translation_key="ev_off_peak_charge_only_enabled",
         icon="mdi:clock-outline",
@@ -163,7 +163,7 @@ SWITCH_DESCRIPTIONS: Final[tuple[HyundaiKiaSwitchDescription, ...]] = (
             coordinator.async_set_off_peak_charge_only_enabled(vid, False)
         ),
     ),
-    HyundaiKiaSwitchDescription(
+    KiaConnectEuSwitchDescription(
         key="ev_charge_port_door_is_open",
         translation_key="ev_charge_port_door",
         icon="mdi:ev-plug-charging",
@@ -172,7 +172,7 @@ SWITCH_DESCRIPTIONS: Final[tuple[HyundaiKiaSwitchDescription, ...]] = (
         on_fn=lambda coordinator, vid: coordinator.async_open_charge_port(vid),
         off_fn=lambda coordinator, vid: coordinator.async_close_charge_port(vid),
     ),
-    HyundaiKiaSwitchDescription(
+    KiaConnectEuSwitchDescription(
         key="valet_mode_control",
         translation_key="valet_mode_control",
         icon="mdi:key-variant",
@@ -198,7 +198,7 @@ async def async_setup_entry(
         for description in SWITCH_DESCRIPTIONS:
             if description.exists_fn(vehicle):
                 entities.append(
-                    HyundaiKiaConnectSwitch(coordinator, description, vehicle)
+                    KiaConnectEuSwitch(coordinator, description, vehicle)
                 )
         if vehicle.supports_svm:
             entities.append(SVMDewarpSwitch(coordinator, vehicle))
@@ -209,16 +209,16 @@ async def async_setup_entry(
 PARALLEL_UPDATES = 1
 
 
-class HyundaiKiaConnectSwitch(SwitchEntity, HyundaiKiaConnectEntity):
-    entity_description: HyundaiKiaSwitchDescription
+class KiaConnectEuSwitch(SwitchEntity, KiaConnectEuEntity):
+    entity_description: KiaConnectEuSwitchDescription
 
     def __init__(
         self,
-        coordinator: HyundaiKiaConnectDataUpdateCoordinator,
-        description: HyundaiKiaSwitchDescription,
+        coordinator: KiaConnectEuDataUpdateCoordinator,
+        description: KiaConnectEuSwitchDescription,
         vehicle: Vehicle,
     ) -> None:
-        HyundaiKiaConnectEntity.__init__(self, coordinator, vehicle)
+        KiaConnectEuEntity.__init__(self, coordinator, vehicle)
         self.entity_description = description
         self._attr_unique_id = f"{DOMAIN}_{vehicle.id}_{description.key}"
         self._attr_icon = description.icon
@@ -234,7 +234,7 @@ class HyundaiKiaConnectSwitch(SwitchEntity, HyundaiKiaConnectEntity):
         await self.entity_description.off_fn(self.coordinator, self.vehicle.id)
 
 
-class SVMDewarpSwitch(SwitchEntity, HyundaiKiaConnectEntity, RestoreEntity):
+class SVMDewarpSwitch(SwitchEntity, KiaConnectEuEntity, RestoreEntity):
     """Toggle fisheye dewarp on this vehicle's SVM camera views.
 
     Presentation preference, not a vehicle command, so it does not use the
@@ -249,11 +249,11 @@ class SVMDewarpSwitch(SwitchEntity, HyundaiKiaConnectEntity, RestoreEntity):
 
     def __init__(
         self,
-        coordinator: HyundaiKiaConnectDataUpdateCoordinator,
+        coordinator: KiaConnectEuDataUpdateCoordinator,
         vehicle: Vehicle,
     ) -> None:
         """Initialize the SVM dewarp toggle."""
-        HyundaiKiaConnectEntity.__init__(self, coordinator, vehicle)
+        KiaConnectEuEntity.__init__(self, coordinator, vehicle)
         self._attr_unique_id = f"{DOMAIN}_{vehicle.id}_svm_dewarp"
 
     @property

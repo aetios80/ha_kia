@@ -1,9 +1,9 @@
 {
-  "title": "Hyundai / Kia Connect",
+  "title": "Kia Connect EU",
   "config": {
     "step": {
       "credentials_password": {
-        "title": "Hyundai / Kia Connect – Dane logowania",
+        "title": "Kia Connect EU – Dane logowania",
         "description": "Wprowadź dane logowania do swojego konta.",
         "data": {
           "username": "Nazwa użytkownika",
@@ -12,7 +12,7 @@
         }
       },
       "credentials_token": {
-        "title": "Hyundai / Kia Connect – Dane logowania",
+        "title": "Kia Connect EU – Dane logowania",
         "description": "Wprowadź dane logowania do swojego konta. W regionie europejskim wymagana jest obsługa specjalnego tokena — szczegóły znajdziesz w README.",
         "data": {
           "username": "Nazwa użytkownika",
@@ -21,15 +21,15 @@
         }
       },
       "user": {
-        "title": "Hyundai / Kia Connect – Region i marka",
-        "description": "Skonfiguruj integrację Hyundai (Bluelink) / Kia (Uvo) Connect z Home Assistant.",
+        "title": "Kia Connect EU – Region i marka",
+        "description": "Skonfiguruj integrację Kia Connect EU z Home Assistant.",
         "data": {
           "region": "Region",
           "brand": "Marka"
         }
       },
       "reauth_confirm": {
-        "title": "Hyundai / Kia Connect – Ponowna autoryzacja",
+        "title": "Kia Connect EU – Ponowna autoryzacja",
         "description": "Nie można uwierzytelnić Twojego konta. Kliknij Wyślij, aby ponownie skonfigurować."
       },
       "select_otp_method": {
@@ -47,14 +47,14 @@
         }
       },
       "reconfigure": {
-        "title": "Hyundai / Kia Connect – Rekonfiguracja",
+        "title": "Kia Connect EU – Rekonfiguracja",
         "data": {
           "reconfigure_choice": "Co chcesz zrobić?"
         }
       },
       "reconfigure_pin": {
-        "title": "Hyundai / Kia Connect – Ustaw PIN",
-        "description": "Wprowadź PIN wymagany do autoryzacji zdalnych poleceń (zamykanie, otwieranie, klimatyzacja) w aplikacji Kia/Hyundai Connect.",
+        "title": "Kia Connect EU – Ustaw PIN",
+        "description": "Wprowadź PIN wymagany do autoryzacji zdalnych poleceń (zamykanie, otwieranie, klimatyzacja) w aplikacji Kia Connect.",
         "data": {
           "pin": "PIN"
         }
@@ -66,7 +66,7 @@
       "reconfigure_successful": "Rekonfiguracja zakończona pomyślnie"
     },
     "error": {
-      "invalid_auth": "Logowanie do serwerów Hyundai (Bluelink) / Kia (Uvo) Connect nie powiodło się. Użyj oficjalnej aplikacji, aby się wylogować i zalogować ponownie, a następnie spróbuj jeszcze raz.",
+      "invalid_auth": "Logowanie do serwerów Kia Connect EU nie powiodło się. Użyj oficjalnej aplikacji, aby się wylogować i zalogować ponownie, a następnie spróbuj jeszcze raz.",
       "invalid_credentials": "Nieprawidłowa nazwa użytkownika lub token/hasło",
       "unknown": "Nieoczekiwany błąd"
     }
@@ -74,7 +74,7 @@
   "options": {
     "step": {
       "init": {
-        "title": "Hyundai / Kia Connect – Konfiguracja",
+        "title": "Kia Connect EU – Konfiguracja",
         "data": {
           "scan_interval": "Interwał skanowania (min)",
           "force_refresh": "Interwał wymuszonego odświeżania (min) — ustawienie zbyt niskiej wartości może rozładować akumulator 12V",

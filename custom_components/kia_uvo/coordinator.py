@@ -1,11 +1,10 @@
-"""Coordinator for Hyundai / Kia Connect integration."""
+"""Coordinator for Kia Connect EU integration."""
 
 from __future__ import annotations
 
 import asyncio
 import datetime as dt
 import logging
-import traceback
 from collections.abc import Callable
 from datetime import timedelta
 from typing import Any
@@ -24,7 +23,6 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from homeassistant.util import dt as dt_util
 from ._vendor.hyundai_kia_connect_api import (
     ClimateRequestOptions,
-    POIInfo,
     ScheduleChargingClimateRequestOptions,
     SVMDetails,
     Token,
@@ -59,7 +57,7 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 
-class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
+class KiaConnectEuDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     """Class to manage fetching data from the API."""
 
     def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry) -> None:
@@ -155,7 +153,7 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any
             # Raising UpdateFailed(retry_after=60) keeps entities temporarily
             # unavailable and schedules an automatic retry after 60 seconds
             # instead of waiting for the next full poll interval.
-            # See: https://github.com/Hyundai-Kia-Connect/kia_uvo/issues/1538
+            # See: the upstream issue tracker
             raise UpdateFailed(
                 f"Token refresh failed, will retry in 60s: {err}",
                 retry_after=60,
@@ -182,17 +180,13 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any
                 )
             except Exception:
                 try:
-                    _LOGGER.exception(
-                        f"Force update failed, falling back to cached: {traceback.format_exc()}"
-                    )
+                    _LOGGER.exception("Force update failed; falling back to cached state")
                     await self.hass.async_add_executor_job(
                         self.vehicle_manager.update_all_vehicles_with_cached_state
                     )
                 except Exception:
-                    _LOGGER.exception(f"Cached update failed: {traceback.format_exc()}")
-                    raise UpdateFailed(
-                        f"Error communicating with API: {traceback.format_exc()}"
-                    )
+                    _LOGGER.exception("Cached update failed")
+                    raise UpdateFailed("Error communicating with Kia Connect")
 
         else:
             await self.hass.async_add_executor_job(
@@ -333,7 +327,7 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any
         """Send a vehicle action, wait for completion, and refresh data.
 
         Serializes actions with a lock to prevent DuplicateRequestError
-        from the Hyundai API when commands overlap. If another action is
+        from the Kia API when commands overlap. If another action is
         already in progress, raises HomeAssistantError immediately so
         the user gets a clear message instead of a mysterious long wait.
         """
@@ -355,7 +349,7 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any
                     f"Vehicle does not support this action: {err}"
                 ) from err
             except Exception as err:
-                raise HomeAssistantError(f"Failed to {error_label}: {err}") from err
+                raise HomeAssistantError(f"Failed to {error_label}") from err
             try:
                 if force_refresh:
                     await self.async_await_action_and_force_refresh(
@@ -615,15 +609,6 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any
             vehicle_id,
             lambda: self.vehicle_manager.set_windows_state(vehicle_id, windowOptions),
             "set windows",
-        )
-
-    async def async_set_navigation(
-        self, vehicle_id: str, poi_list: list[POIInfo]
-    ) -> None:
-        await self._async_send_action(
-            vehicle_id,
-            lambda: self.vehicle_manager.set_navigation(vehicle_id, poi_list),
-            "set navigation",
         )
 
     async def async_open_all_windows(self, vehicle_id: str) -> None:

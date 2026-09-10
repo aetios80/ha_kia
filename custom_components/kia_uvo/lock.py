@@ -1,4 +1,4 @@
-"""Lock for Hyundai / Kia Connect integration."""
+"""Lock for Kia Connect EU integration."""
 
 from __future__ import annotations
 
@@ -12,8 +12,8 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from ._vendor.hyundai_kia_connect_api import Vehicle
 
 from .const import DOMAIN
-from .coordinator import HyundaiKiaConnectDataUpdateCoordinator
-from .entity import HyundaiKiaConnectEntity
+from .coordinator import KiaConnectEuDataUpdateCoordinator
+from .entity import KiaConnectEuEntity
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -27,7 +27,7 @@ async def async_setup_entry(
     entities = []
     for vehicle_id in coordinator.vehicle_manager.vehicles:
         vehicle: Vehicle = coordinator.vehicle_manager.vehicles[vehicle_id]
-        entities.append(HyundaiKiaConnectLock(coordinator, vehicle))
+        entities.append(KiaConnectEuLock(coordinator, vehicle))
 
     async_add_entities(entities)
 
@@ -35,13 +35,13 @@ async def async_setup_entry(
 PARALLEL_UPDATES = 1
 
 
-class HyundaiKiaConnectLock(LockEntity, HyundaiKiaConnectEntity):
+class KiaConnectEuLock(LockEntity, KiaConnectEuEntity):
     def __init__(
         self,
-        coordinator: HyundaiKiaConnectDataUpdateCoordinator,
+        coordinator: KiaConnectEuDataUpdateCoordinator,
         vehicle: Vehicle,
     ) -> None:
-        HyundaiKiaConnectEntity.__init__(self, coordinator, vehicle)
+        KiaConnectEuEntity.__init__(self, coordinator, vehicle)
         self._attr_unique_id = f"{DOMAIN}_{vehicle.id}_door_lock"
         self._attr_translation_key = "door_lock"
 

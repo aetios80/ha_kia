@@ -1,31 +1,36 @@
 {
-  "title": "Hyundai / Kia Connect",
+  "title": "Kia Connect EU",
   "config": {
     "step": {
       "user": {
-        "title": "Hyundai / Kia Connect - Autenticazione",
-        "description": "Configura il tuo Hyundai (Bluelink) / Kia (Uvo) Connect per integrarlo con Home Assistant.",
+        "title": "Kia Connect EU - Origine dati",
+        "description": "Seleziona il backend dati. Kia Connect CCI supporta la lettura del veicolo e i comandi remoti. Official Data API è predisposta ma non disponibile finché Kia non abilita l'accesso di terze parti.",
+        "data": {
+          "data_backend": "Backend dati"
+        }
+      },
+      "credentials_password": {
+        "title": "Kia Connect CCI - Credenziali",
+        "description": "Inserisci le credenziali del tuo account Kia Connect. Password e PIN sono mascherati.",
         "data": {
           "username": "Nome utente",
           "password": "Password",
-          "region": "Regione",
-          "brand": "Marca",
-          "pin": "Pin"
+          "pin": "PIN"
         }
       },
       "reauth_confirm": {
-        "title": "Hyundai / Kia Connect - Riautenticazione",
+        "title": "Kia Connect EU - Riautenticazione",
         "description": "Il tuo account non può essere autenticato. Fai clic su Invia per configurarlo di nuovo."
       },
       "reconfigure": {
-        "title": "Hyundai / Kia Connect - Riconfigura",
+        "title": "Kia Connect EU - Riconfigura",
         "data": {
           "reconfigure_choice": "Cosa vuoi fare?"
         }
       },
       "reconfigure_pin": {
-        "title": "Hyundai / Kia Connect - Imposta PIN",
-        "description": "Inserisci il PIN necessario per autorizzare i comandi remoti (blocco, sblocco, climatizzazione) nell'app Kia/Hyundai Connect.",
+        "title": "Kia Connect EU - Imposta PIN",
+        "description": "Inserisci il PIN necessario per autorizzare i comandi remoti (blocco, sblocco, climatizzazione) nell'app Kia Connect.",
         "data": {
           "pin": "PIN"
         }
@@ -33,17 +38,18 @@
     },
     "abort": {
       "already_configured": "Il dispositivo è già configurato",
+      "official_data_api_unavailable": "Official Data API non è disponibile finché Kia non abilita l'accesso di terze parti. Seleziona Kia Connect CCI per continuare.",
       "reconfigure_successful": "Riconfigurazione riuscita"
     },
     "error": {
-      "invalid_auth": "Impossibile effettuare il login nei server Hyundai (Bluelink) / Kia (Uvo) Connect. Utilizza l'app ufficiale per effettuare il logout, accedere nuovamente e riprovare!",
+      "invalid_auth": "Autenticazione Kia Connect rifiutata.",
       "unknown": "Errore imprevisto"
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "Hyundai / Kia Connect - Configurazione",
+        "title": "Kia Connect EU - Configurazione",
         "data": {
           "scan_interval": "Intervallo di scansione (min)",
           "force_refresh": "Intervallo di aggiornamento forzato (min), prestare attenzione impostando un valore troppo basso poiché consuma la batteria da 12 V",

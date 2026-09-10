@@ -1,10 +1,10 @@
 {
-  "title": "Hyundai / Kia Connect",
+  "title": "Kia Connect EU",
   "config": {
     "step": {
       "user": {
-        "title": "Hyundai / Kia Connect - Autentisering",
-        "description": "Sett opp din Hyundai (Bluelink) / Kia (Uvo) Connect for å integrere med Home Assistant.",
+        "title": "Kia Connect EU - Autentisering",
+        "description": "Sett opp din Kia Connect EU for å integrere med Home Assistant.",
         "data": {
           "username": "Brukernavn",
           "password": "Passord",
@@ -14,18 +14,18 @@
         }
       },
       "reauth_confirm": {
-        "title": "Hyundai / Kia Connect - Reautentisering",
+        "title": "Kia Connect EU - Reautentisering",
         "description": "Kontoen din kan ikke autentiseres. Klikk Send for å sette opp på nytt."
       },
       "reconfigure": {
-        "title": "Hyundai / Kia Connect - Rekonfigurer",
+        "title": "Kia Connect EU - Rekonfigurer",
         "data": {
           "reconfigure_choice": "Hva vil du gjøre?"
         }
       },
       "reconfigure_pin": {
-        "title": "Hyundai / Kia Connect - Angi PIN",
-        "description": "Skriv inn PIN-koden som kreves for å autorisere fjernkommandoer (lås, lås opp, klimaanlegg) i Kia/Hyundai Connect-appen.",
+        "title": "Kia Connect EU - Angi PIN",
+        "description": "Skriv inn PIN-koden som kreves for å autorisere fjernkommandoer (lås, lås opp, klimaanlegg) i Kia Connect-appen.",
         "data": {
           "pin": "PIN"
         }
@@ -36,14 +36,14 @@
       "reconfigure_successful": "Rekonfigurering vellykket"
     },
     "error": {
-      "invalid_auth": "Innlogging mislyktes til Hyundai (Bluelink) / Kia (Uvo) Connect-servere. Vennligst bruk den offisielle appen for å logge ut og logg inn igjen, og prøv på nytt!",
+      "invalid_auth": "Innlogging mislyktes til Kia Connect EU-servere. Vennligst bruk den offisielle appen for å logge ut og logg inn igjen, og prøv på nytt!",
       "unknown": "Uventet feil"
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "Hyundai / Kia Connect - Konfigurasjon",
+        "title": "Kia Connect EU - Konfigurasjon",
         "data": {
           "scan_interval": "Skannintervall (min)",
           "force_refresh": "Tvangsoppdateringsintervall (min), vær forsiktig med å sette dette for lavt da det bruker 12V-batteriet",

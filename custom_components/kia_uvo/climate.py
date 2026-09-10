@@ -1,4 +1,4 @@
-"""Switches for Hyundai / Kia Connect integration."""
+"""Switches for Kia Connect EU integration."""
 
 from __future__ import annotations
 
@@ -19,8 +19,8 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from ._vendor.hyundai_kia_connect_api import ClimateRequestOptions, Vehicle
 
 from .const import DOMAIN
-from .coordinator import HyundaiKiaConnectDataUpdateCoordinator
-from .entity import HyundaiKiaConnectEntity
+from .coordinator import KiaConnectEuDataUpdateCoordinator
+from .entity import KiaConnectEuEntity
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -35,15 +35,15 @@ async def async_setup_entry(
     entities = []
     for vehicle in coordinator.vehicle_manager.vehicles.values():
         if vehicle.air_control_is_on is not None:
-            entities.append(HyundaiKiaCarClimateControlSwitch(coordinator, vehicle))
+            entities.append(KiaConnectEuCarClimateControlSwitch(coordinator, vehicle))
     async_add_entities(entities, True)
 
 
 PARALLEL_UPDATES = 1
 
 
-class HyundaiKiaCarClimateControlSwitch(HyundaiKiaConnectEntity, ClimateEntity):
-    """Hyundai / Kia Connect Car Climate Control."""
+class KiaConnectEuCarClimateControlSwitch(KiaConnectEuEntity, ClimateEntity):
+    """Kia Connect EU Car Climate Control."""
 
     vehicle: Vehicle
 
@@ -79,7 +79,7 @@ class HyundaiKiaCarClimateControlSwitch(HyundaiKiaConnectEntity, ClimateEntity):
 
     def __init__(
         self,
-        coordinator: HyundaiKiaConnectDataUpdateCoordinator,
+        coordinator: KiaConnectEuDataUpdateCoordinator,
         vehicle: Vehicle,
     ) -> None:
         """Initialize the Climate Control."""

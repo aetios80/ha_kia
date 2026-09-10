@@ -22,8 +22,8 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from ._vendor.hyundai_kia_connect_api import Vehicle
 
 from .const import DOMAIN
-from .coordinator import HyundaiKiaConnectDataUpdateCoordinator
-from .entity import HyundaiKiaConnectEntity
+from .coordinator import KiaConnectEuDataUpdateCoordinator
+from .entity import KiaConnectEuEntity
 from .svm_dewarp import camera_fov_deg, dewarp_fisheye
 
 _LOGGER = logging.getLogger(__name__)
@@ -59,7 +59,7 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up image platform."""
-    coordinator: HyundaiKiaConnectDataUpdateCoordinator = hass.data[DOMAIN][
+    coordinator: KiaConnectEuDataUpdateCoordinator = hass.data[DOMAIN][
         config_entry.unique_id
     ]
 
@@ -83,14 +83,14 @@ async def async_setup_entry(
     async_add_entities(entities)
 
 
-class SVMImageEntity(ImageEntity, HyundaiKiaConnectEntity):
+class SVMImageEntity(ImageEntity, KiaConnectEuEntity):
     """One SVM camera view (a crop of the composite image)."""
 
     _attr_content_type = "image/jpeg"
 
     def __init__(
         self,
-        coordinator: HyundaiKiaConnectDataUpdateCoordinator,
+        coordinator: KiaConnectEuDataUpdateCoordinator,
         vehicle: Vehicle,
         view: SVMView,
         order: int,
@@ -98,7 +98,7 @@ class SVMImageEntity(ImageEntity, HyundaiKiaConnectEntity):
         # ImageEntity.__init__ sets up the image-proxy client + access_tokens
         # (it does not call super().__init__, so call it explicitly).
         ImageEntity.__init__(self, coordinator.hass)
-        HyundaiKiaConnectEntity.__init__(self, coordinator, vehicle)
+        KiaConnectEuEntity.__init__(self, coordinator, vehicle)
         self._view = view
         self._order = order
         self._attr_translation_key = view.translation_key

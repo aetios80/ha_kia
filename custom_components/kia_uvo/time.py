@@ -1,4 +1,4 @@
-"""Time entities for Hyundai / Kia Connect integration."""
+"""Time entities for Kia Connect EU integration."""
 
 from __future__ import annotations
 
@@ -15,23 +15,23 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from ._vendor.hyundai_kia_connect_api import Vehicle
 
 from .const import DOMAIN
-from .coordinator import HyundaiKiaConnectDataUpdateCoordinator
-from .entity import HyundaiKiaConnectEntity
+from .coordinator import KiaConnectEuDataUpdateCoordinator
+from .entity import KiaConnectEuEntity
 
 _LOGGER = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True, kw_only=True)
-class HyundaiKiaTimeDescription(TimeEntityDescription):
+class KiaConnectEuTimeDescription(TimeEntityDescription):
     value_fn: Callable[[Vehicle], dt.time | None]
     exists_fn: Callable[[Vehicle], bool]
     set_fn: Callable[
-        [HyundaiKiaConnectDataUpdateCoordinator, str, dt.time], Awaitable[None]
+        [KiaConnectEuDataUpdateCoordinator, str, dt.time], Awaitable[None]
     ]
 
 
-TIME_DESCRIPTIONS: Final[tuple[HyundaiKiaTimeDescription, ...]] = (
-    HyundaiKiaTimeDescription(
+TIME_DESCRIPTIONS: Final[tuple[KiaConnectEuTimeDescription, ...]] = (
+    KiaConnectEuTimeDescription(
         key="ev_off_peak_start_time",
         translation_key="ev_off_peak_start_time",
         icon="mdi:clock-time-ten",
@@ -41,7 +41,7 @@ TIME_DESCRIPTIONS: Final[tuple[HyundaiKiaTimeDescription, ...]] = (
             vid, start=value
         ),
     ),
-    HyundaiKiaTimeDescription(
+    KiaConnectEuTimeDescription(
         key="ev_off_peak_end_time",
         translation_key="ev_off_peak_end_time",
         icon="mdi:clock-time-two",
@@ -66,7 +66,7 @@ async def async_setup_entry(
         for description in TIME_DESCRIPTIONS:
             if description.exists_fn(vehicle):
                 entities.append(
-                    HyundaiKiaConnectTimeEntity(coordinator, description, vehicle)
+                    KiaConnectEuTimeEntity(coordinator, description, vehicle)
                 )
 
     async_add_entities(entities)
@@ -75,16 +75,16 @@ async def async_setup_entry(
 PARALLEL_UPDATES = 1
 
 
-class HyundaiKiaConnectTimeEntity(TimeEntity, HyundaiKiaConnectEntity):
-    entity_description: HyundaiKiaTimeDescription
+class KiaConnectEuTimeEntity(TimeEntity, KiaConnectEuEntity):
+    entity_description: KiaConnectEuTimeDescription
 
     def __init__(
         self,
-        coordinator: HyundaiKiaConnectDataUpdateCoordinator,
-        description: HyundaiKiaTimeDescription,
+        coordinator: KiaConnectEuDataUpdateCoordinator,
+        description: KiaConnectEuTimeDescription,
         vehicle: Vehicle,
     ) -> None:
-        HyundaiKiaConnectEntity.__init__(self, coordinator, vehicle)
+        KiaConnectEuEntity.__init__(self, coordinator, vehicle)
         self.entity_description = description
         self._attr_unique_id = f"{DOMAIN}_{vehicle.id}_{description.key}"
         self._attr_icon = description.icon

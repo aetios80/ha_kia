@@ -12,8 +12,8 @@ import threading
 from unittest.mock import MagicMock
 
 import pytest
-from hyundai_kia_connect_api.Token import Token
-from hyundai_kia_connect_api.Vehicle import Vehicle
+from custom_components.kia_uvo._vendor.hyundai_kia_connect_api.Token import Token
+from custom_components.kia_uvo._vendor.hyundai_kia_connect_api.Vehicle import Vehicle
 
 from custom_components.kia_uvo import diagnostics as diagnostics_mod
 from custom_components.kia_uvo.const import DOMAIN
@@ -35,7 +35,7 @@ def _make_entry() -> MagicMock:
     entry = MagicMock()
     entry.entry_id = "test_entry"
     entry.unique_id = "test_uid"
-    entry.data = {"region": "europe", "brand": "hyundai"}
+    entry.data = {"region": 1, "brand": 1, "data_backend": "cci"}
     entry.options = {
         "scan_interval": 30,
         "force_refresh": 1440,
@@ -86,11 +86,11 @@ async def test_payload_shape() -> None:
 
     payload = await async_get_config_entry_diagnostics(hass, _make_entry())
 
-    assert payload["region"] == "europe"
-    assert payload["brand"] == "hyundai"
+    assert payload["region"] == 1
+    assert payload["brand"] == 1
     assert payload["api_class"] == "MagicMock"
     assert payload["integration_version"] == "3.7.0"
-    assert payload["library_version"] is not None
+    assert payload["library_version"] == "vendored"
     assert payload["vehicle_count"] == 0
     assert payload["vehicles"] == []
     assert "scan_interval" in payload["config_options"]
@@ -179,26 +179,6 @@ async def test_config_options_not_redacted() -> None:
     assert opts["enable_geolocation_entity"] is False
     assert opts["scan_interval"] == 30
     assert REDACTED not in str(opts)
-
-
-@pytest.mark.asyncio
-async def test_library_version_read_off_event_loop(monkeypatch) -> None:
-    coordinator = _make_coordinator()
-    hass = _make_hass(coordinator)
-    loop_thread_id = threading.get_ident()
-    seen: dict[str, int] = {}
-    real_pkg_version = diagnostics_mod.pkg_version
-
-    def _spy(name: str) -> str:
-        seen["thread_id"] = threading.get_ident()
-        return real_pkg_version(name)
-
-    monkeypatch.setattr(diagnostics_mod, "pkg_version", _spy)
-
-    payload = await async_get_config_entry_diagnostics(hass, _make_entry())
-
-    assert payload["library_version"] is not None
-    assert seen["thread_id"] != loop_thread_id
 
 
 @pytest.mark.asyncio

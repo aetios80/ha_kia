@@ -1,7 +1,7 @@
 """Fisheye dewarp for SVM camera views.
 
 The 4 SVM camera segments are full-frame equidistant fisheye images. The
-myHyundai app renders them through a 3D scene (3D car + ground + fisheye
+Kia Connect app renders them through a 3D scene (3D car + ground + fisheye
 textures), which we cannot reproduce exactly. This module is an approximate
 2D fisheye->rectilinear remap used as a presentation aid; it is NOT a
 faithful model of the car's surround view.

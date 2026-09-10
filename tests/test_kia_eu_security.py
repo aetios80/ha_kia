@@ -200,10 +200,10 @@ def test_hacs_manifest_has_no_external_api_dependency() -> None:
     assert "pycryptodome>=3.23.0" in manifest["requirements"]
 
 
-def test_suspension_build_blocks_setup_before_network_access() -> None:
+def test_cci_backend_is_operational_and_official_backend_stays_disabled() -> None:
     init_source = (COMPONENT_ROOT / "__init__.py").read_text(encoding="utf-8")
     flow_source = (COMPONENT_ROOT / "config_flow.py").read_text(encoding="utf-8")
 
-    assert "if key not in {CONF_USERNAME, CONF_PASSWORD, CONF_PIN, CONF_TOKEN}" in init_source
-    assert "temporarily suspended pending protocol validation" in init_source
-    assert 'async_abort(reason="integration_suspended")' in flow_source
+    assert "KiaConnectEuDataUpdateCoordinator(hass, config_entry)" in init_source
+    assert "strip_token_credentials(token_data)" in init_source
+    assert 'reason="official_data_api_unavailable"' in flow_source

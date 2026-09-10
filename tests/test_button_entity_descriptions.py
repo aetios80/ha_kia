@@ -10,11 +10,11 @@ import pytest
 
 from custom_components.kia_uvo.button import (
     BUTTON_DESCRIPTIONS,
-    HyundaiKiaButtonDescription,
+    KiaConnectEuButtonDescription,
 )
 
 
-def _find_description(key: str) -> HyundaiKiaButtonDescription:
+def _find_description(key: str) -> KiaConnectEuButtonDescription:
     for description in BUTTON_DESCRIPTIONS:
         if description.key == key:
             return description

@@ -1,10 +1,10 @@
 {
-  "title": "Hyundai / Kia Connect",
+  "title": "Kia Connect EU",
   "config": {
     "step": {
       "user": {
-        "title": "Hyundai / Kia Connect - 登录账号",
-        "description": "添加您的现代汽车（Bluelink）/起亚汽车（Kia Connect）账号到Home Assistant",
+        "title": "Kia Connect EU - 登录账号",
+        "description": "将您的 Kia Connect EU 账户添加到 Home Assistant",
         "data": {
           "username": "账号",
           "password": "密码",
@@ -14,18 +14,18 @@
         }
       },
       "reauth_confirm": {
-        "title": "Hyundai / Kia Connect - 重新登录账号",
+        "title": "Kia Connect EU - 重新登录账号",
         "description": "您的账户验证失败。点击提交重新登录授权。"
       },
       "reconfigure": {
-        "title": "Hyundai / Kia Connect - 重新配置",
+        "title": "Kia Connect EU - 重新配置",
         "data": {
           "reconfigure_choice": "您想做什么？"
         }
       },
       "reconfigure_pin": {
-        "title": "Hyundai / Kia Connect - 设置 PIN",
-        "description": "请输入在 Kia/Hyundai Connect 应用中授权远程命令（锁车、解锁、空调）所需的 PIN 码。",
+        "title": "Kia Connect EU - 设置 PIN",
+        "description": "请输入在 Kia Connect 应用中授权远程命令（锁车、解锁、空调）所需的 PIN 码。",
         "data": {
           "pin": "PIN"
         }
@@ -43,7 +43,7 @@
   "options": {
     "step": {
       "init": {
-        "title": "Hyundai / Kia Connect - 配置",
+        "title": "Kia Connect EU - 配置",
         "data": {
           "scan_interval": "更新时间间隔（分钟）",
           "force_refresh": "强制更新时间间隔（分钟）",

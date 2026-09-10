@@ -1,10 +1,10 @@
 {
-  "title": "Hyundai / Kia Connect",
+  "title": "Kia Connect EU",
   "config": {
     "step": {
       "user": {
-        "title": "Hyundai / Kia Connect - Autenticación",
-        "description": "Configura tu Hyundai (Bluelink) / Kia (Uvo) Connect para integrarlo con el Asistente de Casa.",
+        "title": "Kia Connect EU - Autenticación",
+        "description": "Configura tu Kia Connect EU para integrarlo con el Asistente de Casa.",
         "data": {
           "username": "Nombre de Usuario",
           "password": "Contraseña",
@@ -14,18 +14,18 @@
         }
       },
       "reauth_confirm": {
-        "title": "Hyundai / Kia Connect - Reautenticación",
+        "title": "Kia Connect EU - Reautenticación",
         "description": "Tu cuenta no puede autenticarse. Haz clic en Enviar para volver a configurar."
       },
       "reconfigure": {
-        "title": "Hyundai / Kia Connect - Reconfigurar",
+        "title": "Kia Connect EU - Reconfigurar",
         "data": {
           "reconfigure_choice": "¿Qué deseas hacer?"
         }
       },
       "reconfigure_pin": {
-        "title": "Hyundai / Kia Connect - Establecer PIN",
-        "description": "Introduce el PIN necesario para autorizar comandos remotos (bloquear, desbloquear, climatización) en la app Kia/Hyundai Connect.",
+        "title": "Kia Connect EU - Establecer PIN",
+        "description": "Introduce el PIN necesario para autorizar comandos remotos (bloquear, desbloquear, climatización) en la app Kia Connect.",
         "data": {
           "pin": "PIN"
         }
@@ -37,14 +37,14 @@
       "reconfigure_successful": "Reconfiguración exitosa"
     },
     "error": {
-      "invalid_auth": "Falló el inicio de sesión en los servidores Hyundai (Bluelink) / Kia (Uvo) Connect. ¡Por favor, usa la aplicación oficial para cerrar sesión y volver a iniciarla e intenta de nuevo!",
+      "invalid_auth": "Falló el inicio de sesión en los servidores Kia Connect EU. ¡Por favor, usa la aplicación oficial para cerrar sesión y volver a iniciarla e intenta de nuevo!",
       "unknown": "Error inesperado"
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "Hyundai / Kia Connect - Configuración",
+        "title": "Kia Connect EU - Configuración",
         "data": {
           "scan_interval": "Intervalo de Escaneo (min)",
           "force_refresh": "Intervalo de Actualización Forzada (min), use esta opción con precaución ya que consume la batería de 12v",

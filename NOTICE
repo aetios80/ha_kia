@@ -1,0 +1,5 @@
+Kia Connect EU is an independent Home Assistant integration maintained by aetios80.
+
+This repository includes a vendored third-party API subset. The original MIT
+license notice is retained in LICENSE. This notice does not imply affiliation
+with, endorsement by, or authorization from Kia or any prior project team.

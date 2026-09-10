@@ -18,16 +18,20 @@ from homeassistant.helpers.device_registry import DeviceEntry
 from .const import (
     BRANDS,
     CONF_BRAND,
+    CONF_DATA_BACKEND,
     CONF_ENABLE_GEOLOCATION_ENTITY,
     CONF_FORCE_REFRESH_INTERVAL,
     CONF_NO_FORCE_REFRESH_HOUR_FINISH,
     CONF_NO_FORCE_REFRESH_HOUR_START,
     CONF_USE_EMAIL_WITH_GEOCODE_API,
     CONF_TOKEN,
+    DATA_BACKEND_CCI,
     DEFAULT_PIN,
     DOMAIN,
     REGIONS,
 )
+from .coordinator import KiaConnectEuDataUpdateCoordinator
+from .redact import strip_token_credentials
 from .services import async_setup_services, async_unload_services
 
 _LOGGER = logging.getLogger(__name__)
@@ -52,21 +56,18 @@ async def async_setup(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
 
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
-    """Disable the experimental integration without contacting Kia."""
-    sanitized_data = {
-        key: value
-        for key, value in config_entry.data.items()
-        if key not in {CONF_USERNAME, CONF_PASSWORD, CONF_PIN, CONF_TOKEN}
-    }
-    if sanitized_data != config_entry.data:
+    """Set up the configured Kia Connect EU data backend."""
+    if config_entry.data.get(CONF_DATA_BACKEND, DATA_BACKEND_CCI) != DATA_BACKEND_CCI:
+        raise ConfigEntryNotReady("The Official Data API backend is not available.")
+
+    token_data = config_entry.data.get(CONF_TOKEN)
+    sanitized_token = strip_token_credentials(token_data)
+    if sanitized_token is not None and sanitized_token != token_data:
         hass.config_entries.async_update_entry(
             config_entry,
-            data=sanitized_data,
+            data={**config_entry.data, CONF_TOKEN: sanitized_token},
         )
-    coordinator = None
-    raise ConfigEntryAuthFailed(
-        "Kia Connect EU is temporarily suspended pending protocol validation."
-    )
+    coordinator = KiaConnectEuDataUpdateCoordinator(hass, config_entry)
     try:
         await coordinator.async_config_entry_first_refresh()
     except ConfigEntryAuthFailed as AuthError:
@@ -94,7 +95,6 @@ async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> 
 
 async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     if config_entry.version == 1:
-        _LOGGER.debug(f"{DOMAIN} - config data- {config_entry}")
         username = config_entry.data.get(CONF_USERNAME)
         password = config_entry.data.get(CONF_PASSWORD)
         pin = config_entry.data.get(CONF_PIN, DEFAULT_PIN)
@@ -136,6 +136,13 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
             config_entry, unique_id=unique_id, title=title, data=new_data
         )
         config_entry.version = 2
+        _LOGGER.info("Migration to version %s successful", config_entry.version)
+    if config_entry.version == 2:
+        hass.config_entries.async_update_entry(
+            config_entry,
+            data={**config_entry.data, CONF_DATA_BACKEND: DATA_BACKEND_CCI},
+        )
+        config_entry.version = 3
         _LOGGER.info("Migration to version %s successful", config_entry.version)
     return True
 

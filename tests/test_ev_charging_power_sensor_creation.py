@@ -2,8 +2,8 @@
 
 from unittest.mock import MagicMock
 
-from hyundai_kia_connect_api import Vehicle
-from hyundai_kia_connect_api.const import ENGINE_TYPES
+from custom_components.kia_uvo._vendor.hyundai_kia_connect_api import Vehicle
+from custom_components.kia_uvo._vendor.hyundai_kia_connect_api.const import ENGINE_TYPES
 
 from custom_components.kia_uvo import sensor as sensor_platform
 from custom_components.kia_uvo.const import DOMAIN

@@ -3,8 +3,6 @@
 from .ApiImpl import (
     ClimateRequestOptions,
     OTPRequest,
-    POICoord,
-    POIInfo,
     ScheduleChargingClimateRequestOptions,
     WindowRequestOptions,
 )
@@ -16,8 +14,6 @@ from .VehicleManager import VehicleManager
 __all__ = [
     "ClimateRequestOptions",
     "OTPRequest",
-    "POICoord",
-    "POIInfo",
     "SVMDetails",
     "ScheduleChargingClimateRequestOptions",
     "Token",

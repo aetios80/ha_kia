@@ -1,4 +1,4 @@
-"""Device Tracker for Hyundai / Kia Connect integration."""
+"""Device Tracker for Kia Connect EU integration."""
 
 from __future__ import annotations
 
@@ -13,8 +13,8 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from ._vendor.hyundai_kia_connect_api import Vehicle
 
 from .const import DOMAIN
-from .coordinator import HyundaiKiaConnectDataUpdateCoordinator
-from .entity import HyundaiKiaConnectEntity
+from .coordinator import KiaConnectEuDataUpdateCoordinator
+from .entity import KiaConnectEuEntity
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ async def async_setup_entry(
     for vehicle_id in coordinator.vehicle_manager.vehicles:
         vehicle: Vehicle = coordinator.vehicle_manager.vehicles[vehicle_id]
         if vehicle.location is not None:
-            entities.append(HyundaiKiaConnectTracker(coordinator, vehicle))
+            entities.append(KiaConnectEuTracker(coordinator, vehicle))
 
     async_add_entities(entities)
 
@@ -37,13 +37,13 @@ async def async_setup_entry(
 PARALLEL_UPDATES = 0
 
 
-class HyundaiKiaConnectTracker(TrackerEntity, HyundaiKiaConnectEntity):
+class KiaConnectEuTracker(TrackerEntity, KiaConnectEuEntity):
     def __init__(
         self,
-        coordinator: HyundaiKiaConnectDataUpdateCoordinator,
+        coordinator: KiaConnectEuDataUpdateCoordinator,
         vehicle: Vehicle,
     ) -> None:
-        HyundaiKiaConnectEntity.__init__(self, coordinator, vehicle)
+        KiaConnectEuEntity.__init__(self, coordinator, vehicle)
         self._attr_unique_id = f"{DOMAIN}_{vehicle.id}_location"
         self._attr_translation_key = "location"
         self._attr_icon = "mdi:map-marker-outline"

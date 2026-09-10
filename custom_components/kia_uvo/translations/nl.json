@@ -1,10 +1,10 @@
 {
-  "title": "Hyundai / Kia Connect",
+  "title": "Kia Connect EU",
   "config": {
     "step": {
       "user": {
-        "title": "Hyundai / Kia Connect - Authenticatie",
-        "description": "Stel uw Hyundai (Bluelink) / Kia (Uvo) Connect in om te integreren met Home Assistant.",
+        "title": "Kia Connect EU - Authenticatie",
+        "description": "Stel uw Kia Connect EU in om te integreren met Home Assistant.",
         "data": {
           "username": "Gebruikersnaam",
           "password": "Wachtwoord",
@@ -14,18 +14,18 @@
         }
       },
       "reauth_confirm": {
-        "title": "Hyundai / Kia Connect - Opnieuw Authenticeren",
+        "title": "Kia Connect EU - Opnieuw Authenticeren",
         "description": "Uw account kan zich niet authenticeren. Klik Submit om het opnieuw te proberen."
       },
       "reconfigure": {
-        "title": "Hyundai / Kia Connect - Opnieuw configureren",
+        "title": "Kia Connect EU - Opnieuw configureren",
         "data": {
           "reconfigure_choice": "Wat wil je doen?"
         }
       },
       "reconfigure_pin": {
-        "title": "Hyundai / Kia Connect - PIN instellen",
-        "description": "Voer de PIN in die vereist is om externe opdrachten (vergrendelen, ontgrendelen, klimaatbeheersing) te autoriseren in de Kia/Hyundai Connect-app.",
+        "title": "Kia Connect EU - PIN instellen",
+        "description": "Voer de PIN in die vereist is om externe opdrachten (vergrendelen, ontgrendelen, klimaatbeheersing) te autoriseren in de Kia Connect-app.",
         "data": {
           "pin": "PIN"
         }
@@ -36,14 +36,14 @@
       "reconfigure_successful": "Herconfiguratie geslaagd"
     },
     "error": {
-      "invalid_auth": "Het authenticeren op de Hyundai (Bluelink) / Kia (Uvo) Connect servers is niet gelukt. Gebruik svp de officiële app om uit te loggen en weer in te loggen, en probeer het dan opnieuw!",
+      "invalid_auth": "Het authenticeren op de Kia Connect EU servers is niet gelukt. Gebruik svp de officiële app om uit te loggen en weer in te loggen, en probeer het dan opnieuw!",
       "unknown": "Onverwachte foutsituatie"
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "Hyundai / Kia Connect - Instellingen",
+        "title": "Kia Connect EU - Instellingen",
         "data": {
           "scan_interval": "Scan Interval (min)",
           "force_refresh": "Forceer Refresh Interval (min)",

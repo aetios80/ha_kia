@@ -1,10 +1,10 @@
 {
-  "title": "Hyundai / Kia Connect",
+  "title": "Kia Connect EU",
   "config": {
     "step": {
       "user": {
-        "title": "Hyundai / Kia Connect - Anmelden",
-        "description": "Hyundai Bluelink / Kia Uvo Connect Anmeldung für Home Assistant.",
+        "title": "Kia Connect EU - Anmelden",
+        "description": "Kia Connect EU Anmeldung für Home Assistant.",
         "data": {
           "username": "Benutzername",
           "password": "Passwort",
@@ -14,18 +14,18 @@
         }
       },
       "reauth_confirm": {
-        "title": "Hyundai / Kia Connect - Reauthentifizierung",
+        "title": "Kia Connect EU - Reauthentifizierung",
         "description": "Dein Konto kann nicht authentifiziert werden. Klicke auf Senden, um die Neukonfiguration durchzuführen."
       },
       "reconfigure": {
-        "title": "Hyundai / Kia Connect - Neu konfigurieren",
+        "title": "Kia Connect EU - Neu konfigurieren",
         "data": {
           "reconfigure_choice": "Was möchtest du tun?"
         }
       },
       "reconfigure_pin": {
-        "title": "Hyundai / Kia Connect - PIN festlegen",
-        "description": "Gib die PIN ein, die für Fernbefehle (Sperren, Entsperren, Klimaanlage) in der Kia/Hyundai Connect App benötigt wird.",
+        "title": "Kia Connect EU - PIN festlegen",
+        "description": "Gib die PIN ein, die für Fernbefehle (Sperren, Entsperren, Klimaanlage) in der Kia Connect App benötigt wird.",
         "data": {
           "pin": "PIN"
         }
@@ -36,14 +36,14 @@
       "reconfigure_successful": "Neukonfiguration erfolgreich"
     },
     "error": {
-      "invalid_auth": "Anmeldung bei Hyundai (Bluelink) / Kia (Uvo) Connect fehlgeschlagen. Bitte melde dich von deiner Hyundai/Kia-App ab, melde dich erneut an und versuche es erneut!",
+      "invalid_auth": "Anmeldung bei Kia Connect EU fehlgeschlagen.",
       "unknown": "Unbekannter Fehler"
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "Hyundai / Kia Connect: Konfiguration",
+        "title": "Kia Connect EU: Konfiguration",
         "data": {
           "scan_interval": "Scan-Intervall (Min.)",
           "force_refresh": "Force-Refresh-Intervall (Min.)",

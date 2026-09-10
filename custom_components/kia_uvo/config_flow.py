@@ -27,6 +27,7 @@ from ._vendor.hyundai_kia_connect_api.exceptions import AuthenticationError
 from .const import (
     BRANDS,
     CONF_BRAND,
+    CONF_DATA_BACKEND,
     CONF_ENABLE_GEOLOCATION_ENTITY,
     CONF_FORCE_REFRESH_INTERVAL,
     CONF_NO_FORCE_REFRESH_HOUR_FINISH,
@@ -40,29 +41,21 @@ from .const import (
     DEFAULT_PIN,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_USE_EMAIL_WITH_GEOCODE_API,
+    DATA_BACKEND_CCI,
+    DATA_BACKEND_OFFICIAL,
     DOMAIN,
     REGIONS,
 )
 
 _LOGGER = logging.getLogger(__name__)
 
-STEP_REGION_DATA_SCHEMA = vol.Schema(
+STEP_BACKEND_DATA_SCHEMA = vol.Schema(
     {
-        vol.Required(CONF_REGION): selector(
+        vol.Required(CONF_DATA_BACKEND, default=DATA_BACKEND_CCI): selector(
             {
                 "select": {
                     "options": [
-                        {"value": str(k), "label": v} for k, v in REGIONS.items()
-                    ],
-                    "mode": "dropdown",
-                }
-            }
-        ),
-        vol.Required(CONF_BRAND): selector(
-            {
-                "select": {
-                    "options": [
-                        {"value": str(k), "label": v} for k, v in BRANDS.items()
+                        {"value": DATA_BACKEND_CCI, "label": "Kia Connect CCI"},
                     ],
                     "mode": "dropdown",
                 }
@@ -149,8 +142,8 @@ async def validate_input(
         raise InvalidAuth from err
 
 
-class HyundaiKiaConnectOptionFlowHandler(config_entries.OptionsFlowWithReload):
-    """Handle an option flow for Hyundai / Kia Connect."""
+class KiaConnectEuOptionFlowHandler(config_entries.OptionsFlowWithReload):
+    """Handle an options flow for Kia Connect EU."""
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
@@ -171,14 +164,14 @@ class HyundaiKiaConnectOptionFlowHandler(config_entries.OptionsFlowWithReload):
 
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """Handle a config flow for Hyundai / Kia Connect."""
+    """Handle a config flow for Kia Connect EU."""
 
-    VERSION = 2
+    VERSION = 3
     reauth_entry: ConfigEntry | None = None
 
     def __init__(self) -> None:
         """Initialize the config flow."""
-        self._region_data: dict[str, Any] | None = None
+        self._backend_data: dict[str, Any] | None = None
         self._vehicle_manager: VehicleManager | None = None
         self._pending_login_data: dict[str, Any] | None = None
         self._otp_request: OTPRequest | None = None
@@ -188,15 +181,28 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     @callback
     def async_get_options_flow(
         config_entry: ConfigEntry,
-    ) -> HyundaiKiaConnectOptionFlowHandler:
+    ) -> KiaConnectEuOptionFlowHandler:
         """Initiate options flow instance."""
-        return HyundaiKiaConnectOptionFlowHandler()
+        return KiaConnectEuOptionFlowHandler()
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Block setup while the experimental protocol is suspended."""
-        return self.async_abort(reason="integration_suspended")
+        """Select the data backend before collecting credentials."""
+        if user_input is None:
+            return self.async_show_form(
+                step_id="user", data_schema=STEP_BACKEND_DATA_SCHEMA
+            )
+
+        if user_input[CONF_DATA_BACKEND] == DATA_BACKEND_OFFICIAL:
+            return self.async_abort(reason="official_data_api_unavailable")
+
+        self._backend_data = {
+            CONF_DATA_BACKEND: DATA_BACKEND_CCI,
+            CONF_REGION: 1,
+            CONF_BRAND: 1,
+        }
+        return await self.async_step_credentials_password()
 
     async def async_step_credentials_password(
         self, user_input: dict[str, Any] | None = None
@@ -205,9 +211,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors = {}
 
         if user_input is not None:
-            assert self._region_data is not None
-            # Combine region data with credentials
-            full_config = {**self._region_data, **user_input}
+            assert self._backend_data is not None
+            full_config = {**self._backend_data, **user_input}
             self._vehicle_manager = VehicleManager(
                 region=full_config[CONF_REGION],
                 brand=full_config[CONF_BRAND],
@@ -231,15 +236,20 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     self._otp_request = result
 
                     return await self.async_step_select_otp_method()
+                full_config[CONF_TOKEN] = self._vehicle_manager.token.to_dict()
                 if self._is_reconfigure:
                     return self.async_update_reload_and_abort(
                         self._get_reconfigure_entry(),
                         data_updates=full_config,
                     )
                 elif self.reauth_entry is None:
-                    title = f"{BRANDS[self._region_data[CONF_BRAND]]} {REGIONS[self._region_data[CONF_REGION]]} {user_input[CONF_USERNAME]}"
+                    title = "Kia Connect EU"
                     await self.async_set_unique_id(
-                        hashlib.sha256(title.encode("utf-8")).hexdigest()
+                        hashlib.sha256(
+                            f"{DATA_BACKEND_CCI}:{user_input[CONF_USERNAME]}".encode(
+                                "utf-8"
+                            )
+                        ).hexdigest()
                     )
                     self._abort_if_unique_id_configured()
                     return self.async_create_entry(title=title, data=full_config)
@@ -319,9 +329,13 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 data_updates=pending_login_data,
             )
         elif self.reauth_entry is None:
-            title = f"{BRANDS[pending_login_data[CONF_BRAND]]} {REGIONS[pending_login_data[CONF_REGION]]} {pending_login_data[CONF_USERNAME]}"
+            title = "Kia Connect EU"
             await self.async_set_unique_id(
-                hashlib.sha256(title.encode("utf-8")).hexdigest()
+                hashlib.sha256(
+                    f"{DATA_BACKEND_CCI}:{pending_login_data[CONF_USERNAME]}".encode(
+                        "utf-8"
+                    )
+                ).hexdigest()
             )
             self._abort_if_unique_id_configured()
 
@@ -340,9 +354,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors = {}
 
         if user_input is not None:
-            assert self._region_data is not None
-            # Combine region data with credentials
-            full_config = {**self._region_data, **user_input}
+            assert self._backend_data is not None
+            full_config = {**self._backend_data, **user_input}
             self._vehicle_manager = VehicleManager(
                 region=full_config[CONF_REGION],
                 brand=full_config[CONF_BRAND],
@@ -365,9 +378,13 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         data_updates=full_config,
                     )
                 elif self.reauth_entry is None:
-                    title = f"{BRANDS[self._region_data[CONF_BRAND]]} {REGIONS[self._region_data[CONF_REGION]]} {user_input[CONF_USERNAME]}"
+                    title = "Kia Connect EU"
                     await self.async_set_unique_id(
-                        hashlib.sha256(title.encode("utf-8")).hexdigest()
+                        hashlib.sha256(
+                            f"{DATA_BACKEND_CCI}:{user_input[CONF_USERNAME]}".encode(
+                                "utf-8"
+                            )
+                        ).hexdigest()
                     )
                     self._abort_if_unique_id_configured()
                     return self.async_create_entry(title=title, data=full_config)

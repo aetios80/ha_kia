@@ -1,4 +1,4 @@
-"""Number for Hyundai / Kia Connect integration."""
+"""Number for Kia Connect EU integration."""
 
 from __future__ import annotations
 
@@ -18,8 +18,8 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from ._vendor.hyundai_kia_connect_api import Vehicle
 
 from .const import DOMAIN, DYNAMIC_UNIT
-from .coordinator import HyundaiKiaConnectDataUpdateCoordinator
-from .entity import HyundaiKiaConnectEntity
+from .coordinator import KiaConnectEuDataUpdateCoordinator
+from .entity import KiaConnectEuEntity
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -70,7 +70,7 @@ async def async_setup_entry(
         for description in NUMBER_DESCRIPTIONS:
             if getattr(vehicle, description.key, None) is not None:
                 entities.append(
-                    HyundaiKiaConnectNumber(coordinator, description, vehicle)
+                    KiaConnectEuNumber(coordinator, description, vehicle)
                 )
 
     async_add_entities(entities)
@@ -79,10 +79,10 @@ async def async_setup_entry(
 PARALLEL_UPDATES = 1
 
 
-class HyundaiKiaConnectNumber(NumberEntity, HyundaiKiaConnectEntity):
+class KiaConnectEuNumber(NumberEntity, KiaConnectEuEntity):
     def __init__(
         self,
-        coordinator: HyundaiKiaConnectDataUpdateCoordinator,
+        coordinator: KiaConnectEuDataUpdateCoordinator,
         description: NumberEntityDescription,
         vehicle: Vehicle,
     ) -> None:

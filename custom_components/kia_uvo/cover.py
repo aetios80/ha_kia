@@ -1,4 +1,4 @@
-"""Cover for Hyundai / Kia Connect integration."""
+"""Cover for Kia Connect EU integration."""
 
 from __future__ import annotations
 
@@ -20,37 +20,37 @@ from ._vendor.hyundai_kia_connect_api import Vehicle, WindowRequestOptions
 from ._vendor.hyundai_kia_connect_api.const import WINDOW_STATE
 
 from .const import DOMAIN
-from .coordinator import HyundaiKiaConnectDataUpdateCoordinator
-from .entity import HyundaiKiaConnectEntity
+from .coordinator import KiaConnectEuDataUpdateCoordinator
+from .entity import KiaConnectEuEntity
 
 _LOGGER = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True, kw_only=True)
-class HyundaiKiaCoverDescription(CoverEntityDescription):
+class KiaConnectEuCoverDescription(CoverEntityDescription):
     window_position: str
 
 
-COVER_DESCRIPTIONS: Final[tuple[HyundaiKiaCoverDescription, ...]] = (
-    HyundaiKiaCoverDescription(
+COVER_DESCRIPTIONS: Final[tuple[KiaConnectEuCoverDescription, ...]] = (
+    KiaConnectEuCoverDescription(
         key="front_left_window_is_open",
         translation_key="front_left_window",
         icon="mdi:car-door",
         window_position="front_left",
     ),
-    HyundaiKiaCoverDescription(
+    KiaConnectEuCoverDescription(
         key="front_right_window_is_open",
         translation_key="front_right_window",
         icon="mdi:car-door",
         window_position="front_right",
     ),
-    HyundaiKiaCoverDescription(
+    KiaConnectEuCoverDescription(
         key="back_left_window_is_open",
         translation_key="back_left_window",
         icon="mdi:car-door",
         window_position="back_left",
     ),
-    HyundaiKiaCoverDescription(
+    KiaConnectEuCoverDescription(
         key="back_right_window_is_open",
         translation_key="back_right_window",
         icon="mdi:car-door",
@@ -73,7 +73,7 @@ async def async_setup_entry(
         for description in COVER_DESCRIPTIONS:
             if getattr(vehicle, description.key, None) is not None:
                 entities.append(
-                    HyundaiKiaConnectCover(coordinator, description, vehicle)
+                    KiaConnectEuCover(coordinator, description, vehicle)
                 )
 
     async_add_entities(entities)
@@ -82,7 +82,7 @@ async def async_setup_entry(
 PARALLEL_UPDATES = 1
 
 
-class HyundaiKiaConnectCover(CoverEntity, HyundaiKiaConnectEntity):
+class KiaConnectEuCover(CoverEntity, KiaConnectEuEntity):
     _attr_supported_features = (
         CoverEntityFeature.OPEN
         | CoverEntityFeature.CLOSE
@@ -93,12 +93,12 @@ class HyundaiKiaConnectCover(CoverEntity, HyundaiKiaConnectEntity):
 
     def __init__(
         self,
-        coordinator: HyundaiKiaConnectDataUpdateCoordinator,
-        description: HyundaiKiaCoverDescription,
+        coordinator: KiaConnectEuDataUpdateCoordinator,
+        description: KiaConnectEuCoverDescription,
         vehicle: Vehicle,
     ) -> None:
-        HyundaiKiaConnectEntity.__init__(self, coordinator, vehicle)
-        self.entity_description: HyundaiKiaCoverDescription = description
+        KiaConnectEuEntity.__init__(self, coordinator, vehicle)
+        self.entity_description: KiaConnectEuCoverDescription = description
         self._attr_unique_id = f"{DOMAIN}_{vehicle.id}_{description.key}"
 
     @property

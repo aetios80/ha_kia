@@ -11,7 +11,6 @@ from time import sleep
 from .ApiImpl import (
     ApiImpl,
     ClimateRequestOptions,
-    POIInfo,
     ScheduleChargingClimateRequestOptions,
     WindowRequestOptions,
 )
@@ -1489,23 +1488,6 @@ class ApiImplType1(ApiImpl):
             url, json=payload, headers=self._get_control_headers(token, vehicle)
         ).json()
         _LOGGER.debug(f"{DOMAIN} - Window State Action Response: {response}")
-        _check_response_for_errors(response)
-        return response["msgId"]
-
-    @_retry_on_device_id_error
-    def set_navigation(
-        self, token: Token, vehicle: Vehicle, poi_list: list[POIInfo]
-    ) -> str:
-        url = self.SPA_API_URL_V2 + "vehicles/" + vehicle.id + "/location/routes"
-        payload = {
-            "deviceID": token.device_id,
-            "poiInfoList": [poi.to_dict() for poi in poi_list],
-        }
-        _LOGGER.debug(f"{DOMAIN} - Set Navigation Request: {payload}")
-        response = self.session.post(
-            url, json=payload, headers=self._get_control_headers(token, vehicle)
-        ).json()
-        _LOGGER.debug(f"{DOMAIN} - Set Navigation Response: {response}")
         _check_response_for_errors(response)
         return response["msgId"]
 

@@ -1,5 +1,5 @@
 {
-  "title": "Hyundai / Kia Connect",
+  "title": "Kia Connect EU",
   "config": {
     "step": {
       "credentials_password": {
@@ -12,7 +12,7 @@
         }
       },
       "credentials_token": {
-        "title": "Hyundai / Kia Connect - Credentials",
+        "title": "Kia Connect EU - Credentials",
         "description": "Enter your account credentials. Europe requires special token work — refer to the README.",
         "data": {
           "username": "Username",
@@ -22,14 +22,13 @@
       },
       "user": {
         "title": "Kia Connect EU",
-        "description": "Independent, unaffiliated integration. Kia may restrict this use.",
+        "description": "Select the data backend. Kia Connect CCI supports vehicle data and remote commands. Official Data API is prepared but unavailable until Kia grants third-party access.",
         "data": {
-          "region": "Region",
-          "brand": "Brand"
+          "data_backend": "Data backend"
         }
       },
       "reauth_confirm": {
-        "title": "Hyundai / Kia Connect - Reauthentication",
+        "title": "Kia Connect EU - Reauthentication",
         "description": "Your account is unable to authenticate. Click Submit to re-setup."
       },
       "select_otp_method": {
@@ -47,14 +46,14 @@
         }
       },
       "reconfigure": {
-        "title": "Hyundai / Kia Connect - Reconfigure",
+        "title": "Kia Connect EU - Reconfigure",
         "data": {
           "reconfigure_choice": "What would you like to do?"
         }
       },
       "reconfigure_pin": {
-        "title": "Hyundai / Kia Connect - Set PIN",
-        "description": "Enter the PIN required to authorize remote commands (lock, unlock, climate) in the Kia/Hyundai Connect app.",
+        "title": "Kia Connect EU - Set PIN",
+        "description": "Enter the PIN required to authorize remote commands (lock, unlock, climate) in the Kia Connect app.",
         "data": {
           "pin": "PIN"
         }
@@ -62,12 +61,12 @@
     },
     "abort": {
       "already_configured": "Device is already configured",
-      "integration_suspended": "Kia Connect EU is temporarily suspended while the experimental protocol is being validated. No credentials were sent to Kia.",
+      "official_data_api_unavailable": "Official Data API is not available until Kia grants third-party access. Select Kia Connect CCI to continue.",
       "reauth_successful": "Successfully reauthenticated",
       "reconfigure_successful": "Reconfiguration was successful"
     },
     "error": {
-      "invalid_auth": "Kia Connect EU authentication was rejected. Do not retry until the integration is validated.",
+      "invalid_auth": "Kia Connect authentication was rejected.",
       "invalid_credentials": "Invalid username or password",
       "unknown": "Unexpected error"
     }
@@ -75,7 +74,7 @@
   "options": {
     "step": {
       "init": {
-        "title": "Hyundai / Kia Connect - Configuration",
+        "title": "Kia Connect EU - Configuration",
         "data": {
           "scan_interval": "Scan Interval (min)",
           "force_refresh": "Force Refresh Interval (min), use caution setting this too low as it consumes 12v battery",

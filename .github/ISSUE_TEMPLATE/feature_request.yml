@@ -5,41 +5,14 @@ body:
   - type: markdown
     attributes:
       value: |
-        Please check the README first:
-        https://github.com/Hyundai-Kia-Connect/kia_uvo/blob/master/README.md
-  - type: dropdown
-    id: region
-    attributes:
-      label: Region
-      description: Select your region
-      options:
-        - Europe
-        - Canada
-        - United States
-        - Australia
-        - China
-        - India
-        - New Zealand
-        - Brazil
-    validations:
-      required: true
-  - type: dropdown
-    id: brand
-    attributes:
-      label: Brand of Car
-      description: Select the vehicle brand
-      options:
-        - Hyundai
-        - Kia
-        - Genesis
-    validations:
-      required: true
+        This integration supports Kia Connect Europe only. Please check the
+        README before requesting a feature.
   - type: input
     id: version
     attributes:
       label: Version of the Integration
       description: Provide the version number you are using
-      placeholder: e.g., 3.11.0
+      placeholder: e.g., 4.0.0
     validations:
       required: true
   - type: textarea

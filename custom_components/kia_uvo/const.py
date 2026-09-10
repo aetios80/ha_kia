@@ -11,6 +11,10 @@ CONF_NO_FORCE_REFRESH_HOUR_FINISH: str = "no_force_refresh_hour_finish"
 CONF_ENABLE_GEOLOCATION_ENTITY: str = "enable_geolocation_entity"
 CONF_USE_EMAIL_WITH_GEOCODE_API: str = "use_email_with_geocode_api"
 CONF_TOKEN: str = "token"
+CONF_DATA_BACKEND: str = "data_backend"
+
+DATA_BACKEND_CCI: str = "cci"
+DATA_BACKEND_OFFICIAL: str = "official_data_api"
 
 REGION_EUROPE: str = "Europe"
 REGIONS = {1: REGION_EUROPE}

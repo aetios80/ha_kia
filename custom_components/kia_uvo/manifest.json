@@ -1,0 +1,13 @@
+{
+  "domain": "kia_uvo",
+  "name": "Kia Connect EU",
+  "codeowners": ["@aetios80"],
+  "config_flow": true,
+  "documentation": "https://github.com/aetios80/ha_kia",
+  "integration_type": "hub",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/aetios80/ha_kia/issues",
+  "loggers": ["kia_uvo"],
+  "requirements": ["pycryptodome>=3.23.0", "tzdata>=2026.3"],
+  "version": "4.0.0"
+}

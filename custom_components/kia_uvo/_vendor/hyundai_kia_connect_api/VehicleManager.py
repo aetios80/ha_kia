@@ -84,6 +84,7 @@ class VehicleManager:
         """Attach config-entry credentials only for the lifetime of this manager."""
         if self.token is not None:
             self.token.username = self.username
+            self.token.password = self.password
             self.token.pin = self.pin
 
     def login(self) -> bool | OTPRequest:

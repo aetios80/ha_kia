@@ -56,6 +56,14 @@ from .Vehicle import (
 
 _LOGGER = SafeDebugLogger(logging.getLogger(__name__))
 
+
+def _describe_refresh_error(err: Exception) -> str:
+    """Return exception type and HTTP status only, never body or token data."""
+    status = getattr(getattr(err, "response", None), "status_code", None)
+    if isinstance(status, int):
+        return f"{type(err).__name__}, HTTP {status}"
+    return type(err).__name__
+
 USER_AGENT_OK_HTTP: str = "okhttp/3.12.0"
 CCI_UPSTREAM_BASELINE: str = "v4.29.1"
 USER_AGENT_MOZILLA: str = "Mozilla/5.0 (Linux; Android 4.1.1; Galaxy Nexus Build/JRO03C) AppleWebKit/535.19 (KHTML, like Gecko) Chrome/18.0.1025.166 Mobile Safari/535.19"
@@ -140,6 +148,10 @@ class KiaUvoApiEU(ApiImplType1):
         password: str,
         pin: str | None = None,
     ) -> Token:
+        if not password:
+            # Fail before any network call: without a password no login is
+            # possible, and the caller must trigger a reauth flow.
+            raise AuthenticationError("Password missing, reauthentication required")
         stamp = self._get_stamp()
         device_id = self._get_device_id(stamp)
         cookies = self._get_cookies()
@@ -452,8 +464,11 @@ class KiaUvoApiEU(ApiImplType1):
         ):
             try:
                 return self._refresh_cci_token(token)
-            except Exception:
-                _LOGGER.warning("CCI token refresh failed, falling back to full login")
+            except Exception as err:
+                _LOGGER.warning(
+                    "CCI token refresh failed (%s), falling back to full login",
+                    _describe_refresh_error(err),
+                )
                 return self.login(token.username, token.password, token.pin)
 
         if token.refresh_token:
@@ -472,9 +487,10 @@ class KiaUvoApiEU(ApiImplType1):
                     valid_until=valid_until,
                     pin=token.pin,
                 )
-            except Exception:
+            except Exception as err:
                 _LOGGER.warning(
-                    "Refresh token exchange failed, falling back to full login"
+                    "Refresh token exchange failed (%s), falling back to full login",
+                    _describe_refresh_error(err),
                 )
         return self.login(token.username, token.password, token.pin)
 

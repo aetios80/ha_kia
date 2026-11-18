@@ -3,7 +3,7 @@
 # pylint:disable=invalid-name
 
 import datetime as dt
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 
 
 @dataclass
@@ -11,14 +11,14 @@ class Token:
     """Token"""
 
     username: str = None
-    password: str = None
+    password: str = field(default=None, repr=False)
     access_token: str = None
     refresh_token: str = None
     device_id: str = None
     # Access Token expiry:
     valid_until: dt.datetime = dt.datetime.min
     stamp: str = None
-    pin: str | None = None
+    pin: str | None = field(default=None, repr=False)
     # Control token (EU/AU/IN PIN verification) — cached with expiry:
     control_token: str | None = None
     control_token_expiry: float = 0

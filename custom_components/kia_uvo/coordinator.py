@@ -318,7 +318,7 @@ class KiaConnectEuDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             if generation != self._refresh_generation and self._token_is_fresh():
                 # Another caller refreshed while this one waited for the lock.
                 return
-            task = asyncio.ensure_future(self._async_refresh(for_command))
+            task = asyncio.ensure_future(self._async_run_token_refresh(for_command))
             try:
                 await asyncio.shield(task)
             except asyncio.CancelledError:
@@ -329,7 +329,7 @@ class KiaConnectEuDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     task.exception()  # mark as retrieved
                 raise
 
-    async def _async_refresh(self, for_command: bool) -> None:
+    async def _async_run_token_refresh(self, for_command: bool) -> None:
         try:
             await self.hass.async_add_executor_job(
                 self.vehicle_manager.check_and_refresh_token

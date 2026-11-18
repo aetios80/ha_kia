@@ -41,6 +41,12 @@ In Home Assistant, open **Settings** -> **Devices & Services** -> **Integrations
 - Passwords longer than 20 characters may be accepted by some Kia accounts only up to the first 20 characters.
 - Breaking change: a 48-character refresh token used as the password is no longer supported. Reconfigure the entry with the real account password.
 
+## Release notes 4.0.6
+
+- Climate entity uses the native temperature members introduced by Home Assistant 2026.11 (`native_temperature_unit`, `native_current_temperature`, `native_target_temperature`); the old members stop working in 2027.11.
+- Device tracker imports `TrackerEntity` from `homeassistant.components.device_tracker` (the `device_tracker.config_entry` alias is removed in 2027.6).
+- Minimum Home Assistant version raised to 2026.11.0 in `hacs.json`, because the native climate members do not exist before it.
+
 ## Release notes 4.0.5
 
 - Fixes the setup failure of 4.0.4 (`_async_refresh() got an unexpected keyword argument 'log_failures'`): a coordinator helper shadowed a private Home Assistant method. A source-level test now prevents redefining private `DataUpdateCoordinator` methods.

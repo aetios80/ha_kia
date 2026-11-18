@@ -101,19 +101,19 @@ class KiaConnectEuCarClimateControlSwitch(KiaConnectEuEntity, ClimateEntity):
         )
 
     @property
-    def temperature_unit(self) -> str:
+    def native_temperature_unit(self) -> str:
         """Get the Cars Climate Control Temperature Unit."""
         if self.vehicle._air_temperature_unit:
             return UnitOfTemperature(self.vehicle._air_temperature_unit)
         return UnitOfTemperature.CELSIUS
 
     @property
-    def current_temperature(self) -> float | None:
+    def native_current_temperature(self) -> float | None:
         """Get the current in-car temperature."""
         return cast(float | None, self.vehicle.air_temperature)
 
     @property
-    def target_temperature(self) -> float | None:
+    def native_target_temperature(self) -> float | None:
         """Get the desired in-car target temperature."""
         # TODO: use Coordinator data, not internal state
         return cast(float | None, self.climate_config.set_temp)
@@ -130,7 +130,7 @@ class KiaConnectEuCarClimateControlSwitch(KiaConnectEuEntity, ClimateEntity):
         # TODO: get the exact per-region range from the lib
         # USA/CA report Fahrenheit; the hardcoded 14-30 °C bounds made the
         # climate slider unusable (14-30 °F) for those vehicles.
-        if self.temperature_unit == UnitOfTemperature.FAHRENHEIT:
+        if self.native_temperature_unit == UnitOfTemperature.FAHRENHEIT:
             return 62
         return 14
 
@@ -138,7 +138,7 @@ class KiaConnectEuCarClimateControlSwitch(KiaConnectEuEntity, ClimateEntity):
     def max_temp(self) -> float:
         """Get the maximum settable temperature."""
         # TODO: get the exact per-region range from the lib
-        if self.temperature_unit == UnitOfTemperature.FAHRENHEIT:
+        if self.native_temperature_unit == UnitOfTemperature.FAHRENHEIT:
             return 82
         return 30
 
@@ -153,12 +153,12 @@ class KiaConnectEuCarClimateControlSwitch(KiaConnectEuEntity, ClimateEntity):
         # as the API can only set target temp and then decides: so we
         # just derive the same by temperature change direction.
         if (
-            self.current_temperature is not None
+            self.native_current_temperature is not None
             and self.climate_config.set_temp is not None
         ):
-            if self.current_temperature > self.climate_config.set_temp:
+            if self.native_current_temperature > self.climate_config.set_temp:
                 return HVACMode.COOL
-            if self.current_temperature < self.climate_config.set_temp:
+            if self.native_current_temperature < self.climate_config.set_temp:
                 return HVACMode.HEAT
 
         # TODO: what could be a sensible answer if target temp is reached?
@@ -177,18 +177,18 @@ class KiaConnectEuCarClimateControlSwitch(KiaConnectEuEntity, ClimateEntity):
 
         # if temp is lower than target, it HEATs
         if (
-            self.current_temperature is not None
+            self.native_current_temperature is not None
             and self.climate_config.set_temp is not None
         ):
-            if self.current_temperature < self.climate_config.set_temp:
+            if self.native_current_temperature < self.climate_config.set_temp:
                 return HVACAction.HEATING
 
             # if temp is higher than target, it COOLs
-            if self.current_temperature > self.climate_config.set_temp:
+            if self.native_current_temperature > self.climate_config.set_temp:
                 return HVACAction.COOLING
 
             # target temp reached
-            if self.current_temperature == self.climate_config.set_temp:
+            if self.native_current_temperature == self.climate_config.set_temp:
                 return HVACAction.IDLE
 
         # should not happen, fallback

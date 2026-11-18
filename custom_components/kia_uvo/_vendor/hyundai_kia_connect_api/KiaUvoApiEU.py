@@ -33,6 +33,7 @@ from .const import (
     VALET_MODE_ACTION,
 )
 from .exceptions import (
+    APIError,
     AuthenticationBlockedError,
     AuthenticationCertificateError,
     AuthenticationError,
@@ -166,7 +167,18 @@ class KiaUvoApiEU(ApiImplType1):
             # possible, and the caller must trigger a reauth flow.
             raise AuthenticationError("Password missing, reauthentication required")
         stamp = self._get_stamp()
-        device_id = self._get_device_id(stamp)
+        try:
+            device_id = self._get_device_id(stamp)
+        except (AuthenticationError, APIError, KeyError, ValueError) as ex:
+            # Upstream #1342: the legacy register endpoint must not make the
+            # whole (CCI) login fail. Continue with a random device identity,
+            # persisted in the token and reused. Only the exception type is
+            # logged, never the identity or the response.
+            _LOGGER.warning(
+                "Legacy device register failed (%s), using a random device identity",
+                type(ex).__name__,
+            )
+            device_id = str(uuid.uuid4())
         cookies = self._get_cookies()
         self._set_session_language(cookies)
 

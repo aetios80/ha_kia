@@ -33,7 +33,13 @@ from .const import (
     VALET_MODE_ACTION,
 )
 from .exceptions import (
+    AuthenticationBlockedError,
+    AuthenticationCertificateError,
     AuthenticationError,
+    AuthenticationInvalidCredentialsError,
+    AuthenticationRedirectError,
+    AuthenticationServiceError,
+    AuthenticationSigninError,
     ConsentRequiredError,
 )
 from .http import http_request
@@ -66,7 +72,14 @@ def _describe_refresh_error(err: Exception) -> str:
 
 USER_AGENT_OK_HTTP: str = "okhttp/3.12.0"
 CCI_UPSTREAM_BASELINE: str = "v4.29.1"
-USER_AGENT_MOZILLA: str = "Mozilla/5.0 (Linux; Android 4.1.1; Galaxy Nexus Build/JRO03C) AppleWebKit/535.19 (KHTML, like Gecko) Chrome/18.0.1025.166 Mobile Safari/535.19"
+# Browser User-Agent for the OneApp signin. Kia's IdP started answering the
+# 2012-era Chrome 18 string with a 302 back to the login page on 2026-10-22.
+# Port of upstream hyundai_kia_connect_api PR #1416 (MIT).
+USER_AGENT_MOZILLA: str = (
+    "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/120.0.0.0 Mobile Safari/537.36"
+)
+SIGNIN_UA_APP_SUFFIX: str = "_CCS_APP_AOS"
 ACCEPT_HEADER_ALL: str = "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9"
 
 SUPPORTED_LANGUAGES_LIST = [
@@ -279,7 +292,7 @@ class KiaUvoApiEU(ApiImplType1):
         host = self.LOGIN_FORM_HOST
         client_id = self.ONEAPP_CLIENT_ID
         redirect_uri = self.ONEAPP_REDIRECT_URI
-        mobile_ua = USER_AGENT_MOZILLA + "_CCS_APP_AOS"
+        mobile_ua = USER_AGENT_MOZILLA + SIGNIN_UA_APP_SUFFIX
 
         s = ApiImplSession()
         s.headers.update({"User-Agent": mobile_ua})
@@ -292,7 +305,7 @@ class KiaUvoApiEU(ApiImplType1):
         )
         auth_resp = s.get(auth_url, allow_redirects=True)
         if "abusing" in auth_resp.text.lower() or "/error?status=400" in auth_resp.url:
-            raise AuthenticationError(
+            raise AuthenticationBlockedError(
                 "IDPConnect authorize was blocked by the WAF ('abusing request'). "
                 "This is a server-side block, not a credentials problem. See #1273."
             )
@@ -300,7 +313,7 @@ class KiaUvoApiEU(ApiImplType1):
         # Step 2: RSA public key
         resp = s.get(f"{host}/auth/api/v1/accounts/certs")
         if resp.status_code != 200:
-            raise AuthenticationError(
+            raise AuthenticationCertificateError(
                 f"API error: failed to fetch RSA certs: HTTP {resp.status_code}. "
                 "This may indicate a Hyundai API change."
             )
@@ -331,34 +344,61 @@ class KiaUvoApiEU(ApiImplType1):
             },
             allow_redirects=False,
         )
+        if resp.status_code >= 500:
+            raise AuthenticationServiceError(
+                f"Signin failed: identity provider error HTTP {resp.status_code}."
+            )
         if resp.status_code != 302:
-            raise AuthenticationError(
+            raise AuthenticationSigninError(
                 f"Signin failed: HTTP {resp.status_code}. "
                 "Check username and password."
             )
         location = resp.headers.get("location", "")
         code_list = parse_qs(urlparse(location).query).get("code")
         if not code_list:
-            if "error" in location.lower():
-                error_desc = parse_qs(urlparse(location).query).get(
-                    "error_description", ["unknown"]
-                )[0]
-                raise AuthenticationError(
-                    f"Authentication rejected: {error_desc}. "
-                    "Check username and password."
+            query = parse_qs(urlparse(location).query)
+            if query.get("error"):
+                # Upstream #1477: only an explicit "invalid credentials" is a
+                # proven credentials problem. Only a sanitised error code is
+                # reported, never the URL or the free-text description.
+                error_desc = query.get("error_description", [""])[0]
+                if error_desc.strip().casefold() == "invalid credentials":
+                    raise AuthenticationInvalidCredentialsError(
+                        "Authentication rejected: invalid credentials."
+                    )
+                error_code = re.sub(r"[^A-Za-z0-9_.-]", "", query["error"][0])[:40]
+                _LOGGER.warning("Kia Connect EU signin outcome=error")
+                raise AuthenticationSigninError(
+                    "Authentication rejected by the identity provider "
+                    f"(error code: {error_code or 'unknown'})."
                 )
             if "/web/v1/user/authorization" in location:
+                _LOGGER.warning("Kia Connect EU signin outcome=consent")
                 raise ConsentRequiredError(
                     "Account consent is required. Please log in via a browser "
                     "once to accept the terms, then retry."
                 )
             if "authorize" in location:
-                raise AuthenticationError(
-                    "Authentication failed — returned to login page. "
-                    "Check username and password."
+                message = (
+                    "Kia redirected the signin back to the login page without "
+                    "an authorization code. The cause can be a rejected "
+                    "User-Agent or a wrong password (credentials): the redirect "
+                    "does not tell them apart."
                 )
-            raise AuthenticationError(
-                f"API error: unexpected redirect after signin: {location[:250]}"
+                if len(password) > 20:
+                    # Upstream #1536: some EU accounts only hold the first 20
+                    # characters of a longer password. Neither the password
+                    # nor its exact length is ever reported.
+                    message += (
+                        " Hint: the password is longer than 20 characters and "
+                        "some accounts only accept its first 20."
+                    )
+                # Fixed text only: no URL, query, code or token in the log.
+                _LOGGER.warning("Kia Connect EU signin outcome=login_page. %s", message)
+                raise AuthenticationRedirectError(message)
+            _LOGGER.warning("Kia Connect EU signin outcome=unexpected_redirect")
+            raise AuthenticationRedirectError(
+                "API error: unexpected redirect after signin."
             )
         code = code_list[0]
 

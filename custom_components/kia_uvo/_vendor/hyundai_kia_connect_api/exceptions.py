@@ -21,6 +21,44 @@ class AuthenticationError(HyundaiKiaException):
     """
 
 
+class AuthenticationBlockedError(AuthenticationError):
+    """
+    The identity provider blocked the authorization request (WAF).
+    """
+
+
+class AuthenticationCertificateError(AuthenticationError):
+    """
+    The identity provider RSA certificate could not be retrieved.
+    """
+
+
+class AuthenticationServiceError(AuthenticationError):
+    """
+    The identity provider answered with a server-side error (HTTP 5xx).
+    """
+
+
+class AuthenticationSigninError(AuthenticationError):
+    """
+    The identity provider rejected the sign-in response.
+    """
+
+
+class AuthenticationInvalidCredentialsError(AuthenticationSigninError):
+    """
+    The identity provider explicitly reported invalid credentials.
+    """
+
+
+class AuthenticationRedirectError(AuthenticationError):
+    """
+    The sign-in flow redirected back to the login page (or elsewhere
+    unexpected) without issuing an authorization code. The redirect alone
+    cannot tell a rejected User-Agent apart from rejected credentials.
+    """
+
+
 class AuthenticationOTPRequired(AuthenticationError):
     """
     Raised when OTP is required for authentication.

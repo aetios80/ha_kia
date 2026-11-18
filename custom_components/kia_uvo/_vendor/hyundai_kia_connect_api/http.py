@@ -6,6 +6,12 @@ from urllib.parse import urlsplit
 import requests
 
 
+def _safe_target(url: str) -> str:
+    """Host and path only: never the query string or fragment."""
+    parsed = urlsplit(url)
+    return f"{parsed.hostname or ''}{parsed.path}"
+
+
 class EndpointPolicyError(requests.RequestException):
     """Raised when a request is outside the explicit EU endpoint policy."""
 
@@ -54,10 +60,21 @@ class ApiImplSession(requests.Session):
         )
         try:
             return super().request(method, url, **kwargs)
-        except requests.exceptions.Timeout as exc:
+        except requests.exceptions.Timeout:
             from .exceptions import RequestTimeoutError
 
-            raise RequestTimeoutError(str(exc)) from exc
+            # Fixed message: the original text embeds the full URL, whose
+            # query can carry an OAuth authorization code.
+            raise RequestTimeoutError(
+                f"Request to {_safe_target(url)} timed out"
+            ) from None
+        except requests.exceptions.RequestException as exc:
+            message = f"Request to {_safe_target(url)} failed ({type(exc).__name__})"
+            try:
+                sanitized: requests.RequestException = type(exc)(message)
+            except Exception:  # pylint: disable=broad-except
+                sanitized = requests.RequestException(message)
+            raise sanitized from None
 
     def send(self, request, **kwargs):
         validate_endpoint(request.url, allowed_hosts=self.allowed_hosts)

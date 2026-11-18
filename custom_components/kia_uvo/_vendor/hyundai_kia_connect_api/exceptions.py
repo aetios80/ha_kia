@@ -89,6 +89,32 @@ class APIError(HyundaiKiaException):
     """
 
 
+class LoginThrottledError(APIError):
+    """
+    A full password login was refused locally by the login limit (one per
+    window). Deliberately NOT an AuthenticationError: the limit never starts a
+    reauthentication. `retry_after` is the remaining time in seconds.
+    """
+
+    def __init__(self, message: str = "", retry_after: float = 0.0) -> None:
+        super().__init__(message)
+        self.retry_after = float(retry_after)
+
+
+class LoginAttemptFailedError(APIError):
+    """
+    A full login attempt failed for a reason that is not a proven credentials
+    problem (login page redirect below the failure limit, WAF block, RSA
+    certificates, token-exchange or server error). Not an AuthenticationError:
+    no reauthentication yet. `retry_after` is the time left in the login
+    window.
+    """
+
+    def __init__(self, message: str = "", retry_after: float = 0.0) -> None:
+        super().__init__(message)
+        self.retry_after = float(retry_after)
+
+
 class DeviceIDError(APIError):
     """
     Raised upon receipt of an Invalid Device ID error.

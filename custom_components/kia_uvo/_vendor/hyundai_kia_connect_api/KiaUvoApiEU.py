@@ -48,12 +48,14 @@ from .exceptions import (
     AuthenticationSigninError,
     AuthenticationTokenExchangeError,
     ConsentRequiredError,
+    LoginAttemptFailedError,
 )
 from .cci_fingerprint import (
     build_fp_headers,
     compute_x_fingerprint,
     is_gate_rejection,
 )
+from .login_guard import LOGIN_FAILURE_LIMIT, LoginGuard
 from .http import http_request
 from .logging_utils import SafeDebugLogger, debug_event
 from .Token import Token
@@ -114,6 +116,9 @@ SUPPORTED_LANGUAGES_LIST = [
 
 
 class KiaUvoApiEU(ApiImplType1):
+    # Owned by the integration (coordinator) and injected through the
+    # VehicleManager; None means "no limit" (config flow, first login).
+    login_guard: LoginGuard | None = None
     data_timezone = ZoneInfo("Europe/Berlin")
     temperature_range = tuple(x * 0.5 for x in range(28, 60))
 
@@ -581,12 +586,62 @@ class KiaUvoApiEU(ApiImplType1):
                     "CCI token refresh failed (%s), falling back to full login",
                     _describe_refresh_error(err),
                 )
-                return self.login(token.username, token.password, token.pin)
+                return self._guarded_login(token.username, token.password, token.pin)
 
         # Upstream #1507: no OAuth2 refresh_token grant any more. A token
         # without CCI fields (pre-CCI install) is migrated by a full CCI login
         # with the stored password.
-        return self.login(token.username, token.password, token.pin)
+        return self._guarded_login(token.username, token.password, token.pin)
+
+    def _guarded_login(
+        self, username: str, password: str, pin: str | None = None
+    ) -> Token:
+        """Full login for the refresh fallback, behind the login limit.
+
+        The single choke point of every refresh -> login fallback: the guard
+        is consulted before any network request and counts the attempt. The
+        outcome decides what the caller sees:
+
+        - proven bad credentials (AuthenticationInvalidCredentialsError) and
+          other explicit IdP rejections or account states (consent, missing
+          password): raised as is, reauthentication at the first error;
+        - redirect back to the login page (ambiguous: User-Agent or password):
+          counts toward LOGIN_FAILURE_LIMIT, below it LoginAttemptFailedError,
+          at the limit the original AuthenticationError (reauthentication);
+        - WAF block, certificate, token-exchange or server errors: neither
+          counted nor reauthentication, LoginAttemptFailedError;
+        - network errors and timeouts propagate unchanged and do not count
+          as failures (the attempt still uses the window).
+        """
+        guard = self.login_guard
+        if guard is None:
+            return self.login(username, password, pin)
+        guard.begin_attempt()
+        try:
+            token = self.login(username, password, pin)
+        except AuthenticationInvalidCredentialsError:
+            raise
+        except AuthenticationRedirectError as err:
+            if guard.record_rejection() >= LOGIN_FAILURE_LIMIT:
+                raise
+            raise LoginAttemptFailedError(
+                "Login page redirect; the next attempt is allowed after the "
+                "login window",
+                retry_after=guard.remaining_seconds(),
+            ) from err
+        except (
+            AuthenticationBlockedError,
+            AuthenticationCertificateError,
+            AuthenticationServiceError,
+            AuthenticationTokenExchangeError,
+        ) as err:
+            raise LoginAttemptFailedError(
+                f"Full login failed ({type(err).__name__}); the next attempt is "
+                "allowed after the login window",
+                retry_after=guard.remaining_seconds(),
+            ) from err
+        guard.record_success()
+        return token
 
     def _refresh_cci_token(self, token: Token) -> Token:
         """Refresh the CCI token set and re-exchange the CCS token.

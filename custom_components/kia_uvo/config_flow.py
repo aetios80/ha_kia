@@ -23,6 +23,7 @@ from ._vendor.hyundai_kia_connect_api import Token, VehicleManager
 from ._vendor.hyundai_kia_connect_api.ApiImpl import OTPRequest
 from ._vendor.hyundai_kia_connect_api.const import OTP_NOTIFY_TYPE
 from ._vendor.hyundai_kia_connect_api.exceptions import AuthenticationError
+from ._vendor.hyundai_kia_connect_api.login_guard import LoginGuard
 
 from .const import (
     BRANDS,
@@ -30,6 +31,7 @@ from .const import (
     CONF_DATA_BACKEND,
     CONF_ENABLE_GEOLOCATION_ENTITY,
     CONF_FORCE_REFRESH_INTERVAL,
+    CONF_LOGIN_GUARD,
     CONF_NO_FORCE_REFRESH_HOUR_FINISH,
     CONF_NO_FORCE_REFRESH_HOUR_START,
     CONF_TOKEN,
@@ -213,6 +215,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             assert self._backend_data is not None
             full_config = {**self._backend_data, **user_input}
+            # A (re)configuration starts from a clean login limit; reauth and
+            # reconfigure would otherwise inherit the old counter.
+            full_config[CONF_LOGIN_GUARD] = LoginGuard().to_dict()
             self._vehicle_manager = VehicleManager(
                 region=full_config[CONF_REGION],
                 brand=full_config[CONF_BRAND],
@@ -356,6 +361,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             assert self._backend_data is not None
             full_config = {**self._backend_data, **user_input}
+            # A (re)configuration starts from a clean login limit; reauth and
+            # reconfigure would otherwise inherit the old counter.
+            full_config[CONF_LOGIN_GUARD] = LoginGuard().to_dict()
             self._vehicle_manager = VehicleManager(
                 region=full_config[CONF_REGION],
                 brand=full_config[CONF_BRAND],

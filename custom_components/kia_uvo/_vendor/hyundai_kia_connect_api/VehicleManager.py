@@ -49,6 +49,7 @@ class VehicleManager:
         geocode_api_key: str | None = None,
         token: Token | None = None,
         language: str = "en",
+        login_guard=None,
     ):
         self.region: int = region
         self.brand: int = brand
@@ -65,6 +66,9 @@ class VehicleManager:
             self.region, self.brand, self.language
         )
 
+        if login_guard is not None:
+            # Owned by the caller; applied to the refresh -> login fallback.
+            self.api.login_guard = login_guard
         self.token: Token = token
         self._hydrate_token_credentials()
         self.vehicles: dict = {}

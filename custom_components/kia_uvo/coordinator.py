@@ -33,13 +33,17 @@ from ._vendor.hyundai_kia_connect_api import (
 from ._vendor.hyundai_kia_connect_api.const import WINDOW_STATE
 from ._vendor.hyundai_kia_connect_api.exceptions import (
     AuthenticationError,
+    LoginAttemptFailedError,
+    LoginThrottledError,
     UnsupportedControlError,
 )
+from ._vendor.hyundai_kia_connect_api.login_guard import LoginGuard
 
 from .const import (
     CONF_BRAND,
     CONF_ENABLE_GEOLOCATION_ENTITY,
     CONF_FORCE_REFRESH_INTERVAL,
+    CONF_LOGIN_GUARD,
     CONF_NO_FORCE_REFRESH_HOUR_FINISH,
     CONF_NO_FORCE_REFRESH_HOUR_START,
     CONF_TOKEN,
@@ -68,6 +72,9 @@ class KiaConnectEuDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # Per-vehicle SVM fisheye dewarp toggle (local UI state, off by default).
         self._svm_dewarp: dict[str, bool] = {}
 
+        # The coordinator owns the login-limit state and persists it in its
+        # own config-entry key; the library only consults it.
+        self.login_guard = LoginGuard.from_dict(config_entry.data.get(CONF_LOGIN_GUARD))
         self.vehicle_manager = VehicleManager(
             region=config_entry.data.get(CONF_REGION),
             brand=config_entry.data.get(CONF_BRAND),
@@ -84,6 +91,7 @@ class KiaConnectEuDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             token=Token.from_dict(config_entry.data.get(CONF_TOKEN, None))
             if config_entry.data.get(CONF_TOKEN, None)
             else None,
+            login_guard=self.login_guard,
         )
         self.scan_interval: int = (
             config_entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL) * 60
@@ -141,6 +149,19 @@ class KiaConnectEuDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         )
         try:
             await self.async_check_and_refresh_token()
+        except (LoginThrottledError, LoginAttemptFailedError) as err:
+            # The login limit is not an authentication problem: no reauth.
+            # Retry when the login window reopens.
+            retry_after = max(60, int(err.retry_after))
+            _LOGGER.warning(
+                "%s - Login limited to one per 6 hours; next attempt in %d s",
+                DOMAIN,
+                retry_after,
+            )
+            raise UpdateFailed(
+                "Token refresh failed and the full login is limited",
+                retry_after=retry_after,
+            ) from err
         except AuthenticationError as AuthError:
             raise ConfigEntryAuthFailed(AuthError) from AuthError
         except Exception as err:
@@ -197,7 +218,7 @@ class KiaConnectEuDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     async def async_update_all(self) -> None:
         """Update vehicle data."""
-        await self.async_check_and_refresh_token()
+        await self.async_check_and_refresh_token(for_command=True)
         await self.hass.async_add_executor_job(
             self.vehicle_manager.update_all_vehicles_with_cached_state
         )
@@ -205,7 +226,7 @@ class KiaConnectEuDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     async def async_force_update_all(self) -> None:
         """Force refresh vehicle data and update it."""
-        await self.async_check_and_refresh_token()
+        await self.async_check_and_refresh_token(for_command=True)
         await self.hass.async_add_executor_job(
             self.vehicle_manager.force_refresh_all_vehicles_states
         )
@@ -213,7 +234,7 @@ class KiaConnectEuDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     async def async_force_refresh_vehicle(self, vehicle_id: str) -> None:
         """Force refresh a single vehicle's state."""
-        await self.async_check_and_refresh_token()
+        await self.async_check_and_refresh_token(for_command=True)
         await self.hass.async_add_executor_job(
             self.vehicle_manager.force_refresh_vehicle_state, vehicle_id
         )
@@ -262,12 +283,47 @@ class KiaConnectEuDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.async_set_updated_data(self.data)
         return details
 
-    async def async_check_and_refresh_token(self) -> None:
-        """Refresh token if needed via library."""
-        await self.hass.async_add_executor_job(
-            self.vehicle_manager.check_and_refresh_token
-        )
-        await self._async_save_token()
+    async def async_check_and_refresh_token(self, *, for_command: bool = False) -> None:
+        """Refresh token if needed via library.
+
+        The login-limit state is persisted whatever the outcome, also when the
+        refresh or the fallback login raised. With for_command=True (services
+        and vehicle actions) a blocked login becomes a readable
+        HomeAssistantError; a manual command never resets or bypasses the
+        limit.
+        """
+        try:
+            await self.hass.async_add_executor_job(
+                self.vehicle_manager.check_and_refresh_token
+            )
+            await self._async_save_token()
+        except (LoginThrottledError, LoginAttemptFailedError) as err:
+            if not for_command:
+                raise
+            raise HomeAssistantError(
+                "Kia login is limited until "
+                f"{self._login_limit_until_text(err.retry_after)}"
+            ) from err
+        finally:
+            self._async_save_login_guard()
+
+    @staticmethod
+    def _login_limit_until_text(retry_after: float) -> str:
+        until = dt_util.utcnow() + timedelta(seconds=retry_after)
+        return dt_util.as_local(until).strftime("%H:%M")
+
+    def _async_save_login_guard(self) -> None:
+        """Persist the login-limit state, only when it changed."""
+        guard = self.login_guard
+        config_entry = self.config_entry
+        if config_entry is None or not guard.dirty:
+            return
+        guard.dirty = False
+        new_state = guard.to_dict()
+        if new_state != config_entry.data.get(CONF_LOGIN_GUARD):
+            self.hass.config_entries.async_update_entry(
+                config_entry, data={**config_entry.data, CONF_LOGIN_GUARD: new_state}
+            )
 
     async def async_await_action_and_refresh(
         self, vehicle_id: str, action_id: str
@@ -341,7 +397,7 @@ class KiaConnectEuDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 "Please wait for it to complete and try again."
             )
         async with self._action_lock:
-            await self.async_check_and_refresh_token()
+            await self.async_check_and_refresh_token(for_command=True)
             try:
                 action_id = await self.hass.async_add_executor_job(action_fn)
             except UnsupportedControlError as err:

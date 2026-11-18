@@ -133,13 +133,9 @@ class KiaUvoApiEU(ApiImplType1):
         self.BASE_DOMAIN: str = "prd.eu-ccapi.kia.com"
         self.PORT: int = 8080
         self.CCSP_SERVICE_ID: str = "fdc85c00-0a2f-4c64-bcb4-2cfb1500730a"
-        self.CCS_SERVICE_SECRET: str = "secret"
         self.APP_ID: str = "a2b8469b-30a3-4361-8e13-6fceea8fbe74"
         self.CFB: str = base64.b64decode(
             "wLTVxwidmH8CfJYBWSnHD6E0huk0ozdiuygB4hLkM5XCgzAL1Dk5sE36d/bx5PFMbZs="
-        )
-        self.BASIC_AUTHORIZATION: str = (
-            "Basic ZmRjODVjMDAtMGEyZi00YzY0LWJjYjQtMmNmYjE1MDA3MzBhOnNlY3JldA=="
         )
         self.LOGIN_FORM_HOST = "https://idpconnect-eu.kia.com"
         self.PUSH_TYPE = "APNS"
@@ -221,35 +217,11 @@ class KiaUvoApiEU(ApiImplType1):
         cookies = self._get_cookies()
         self._set_session_language(cookies)
 
-        # Determine if password is a legacy 48-char refresh_token or plaintext.
-        # (CCI 87-char refresh tokens are not usable as a standalone password —
-        # the CCI token refresh needs the full token set, handled by
-        # refresh_access_token with the persisted Token.)
-        is_refresh_token = bool(re.match(r"^[A-Z0-9]{48}$", password))
-
-        if is_refresh_token:
-            refresh_token = password
-            _, access_token, _, expires_in = self._get_access_token(
-                stamp, refresh_token
-            )
-            valid_until = dt.datetime.now(dt.UTC) + dt.timedelta(seconds=expires_in)
-            return Token(
-                username=username,
-                password=password,
-                access_token=access_token,
-                refresh_token=refresh_token,
-                device_id=device_id,
-                valid_until=valid_until,
-                pin=pin,
-            )
-
-        # Plaintext password login — CCI flow (Hyundai/Kia) or legacy (Genesis).
+        # Upstream #1506: the legacy 48-char refresh-token "password" is gone.
+        # Every password, whatever its shape, goes through the CCI login.
         info = self._login_with_password(username, password, device_id)
-        # CCI flow returns the CCS token expiry as valid_until; legacy falls back
-        # to expires_in from the token response.
-        valid_until = info.get("valid_until") or (
-            dt.datetime.now(dt.UTC) + dt.timedelta(seconds=info["expires_in"])
-        )
+        # The CCI flow always returns the CCS token expiry as valid_until.
+        valid_until = info["valid_until"]
 
         return Token(
             username=username,
@@ -611,27 +583,9 @@ class KiaUvoApiEU(ApiImplType1):
                 )
                 return self.login(token.username, token.password, token.pin)
 
-        if token.refresh_token:
-            try:
-                stamp = self._get_stamp()
-                _, access_token, new_refresh_token, expires_in = self._get_access_token(
-                    stamp, token.refresh_token
-                )
-                valid_until = dt.datetime.now(dt.UTC) + dt.timedelta(seconds=expires_in)
-                return Token(
-                    username=token.username,
-                    password=token.password,
-                    access_token=access_token,
-                    refresh_token=new_refresh_token or token.refresh_token,
-                    device_id=token.device_id,
-                    valid_until=valid_until,
-                    pin=token.pin,
-                )
-            except Exception as err:
-                _LOGGER.warning(
-                    "Refresh token exchange failed (%s), falling back to full login",
-                    _describe_refresh_error(err),
-                )
+        # Upstream #1507: no OAuth2 refresh_token grant any more. A token
+        # without CCI fields (pre-CCI install) is migrated by a full CCI login
+        # with the stored password.
         return self.login(token.username, token.password, token.pin)
 
     def _refresh_cci_token(self, token: Token) -> Token:
@@ -1753,23 +1707,3 @@ class KiaUvoApiEU(ApiImplType1):
         session = ApiImplSession()
         _ = session.get(url)
         return session.cookies.get_dict()
-
-    def _get_access_token(self, stamp, authorization_code):
-        url = self.LOGIN_FORM_HOST + "/auth/api/v2/user/oauth2/token"
-        data = {
-            "grant_type": "refresh_token",
-            "refresh_token": authorization_code,
-            "client_id": self.CCSP_SERVICE_ID,
-            "client_secret": self.CCS_SERVICE_SECRET,
-        }
-
-        response = self.session.post(url, data=data, allow_redirects=False)
-
-        response_json = response.json()
-        _check_response_for_errors(response_json)
-
-        token_type = response_json["token_type"]
-        access_token = token_type + " " + response_json["access_token"]
-        authorization_code = response_json.get("refresh_token", authorization_code)
-        expires_in = response_json["expires_in"]
-        return token_type, access_token, authorization_code, expires_in

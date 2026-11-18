@@ -59,6 +59,24 @@ class AuthenticationRedirectError(AuthenticationError):
     """
 
 
+class AuthenticationTokenExchangeError(AuthenticationError):
+    """
+    A CCI/CCS token exchange or refresh was unsuccessful.
+    """
+
+
+class AuthenticationCciTokenExchangeError(AuthenticationTokenExchangeError):
+    """
+    The CCI authorization-code exchange was unsuccessful.
+    """
+
+
+class AuthenticationCcsTokenExchangeError(AuthenticationTokenExchangeError):
+    """
+    The CCS token exchange was unsuccessful.
+    """
+
+
 class AuthenticationOTPRequired(AuthenticationError):
     """
     Raised when OTP is required for authentication.

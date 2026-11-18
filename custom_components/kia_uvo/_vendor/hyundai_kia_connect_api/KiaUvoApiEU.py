@@ -4,6 +4,7 @@
 
 import base64
 import datetime as dt
+import json
 import logging
 import random
 import re
@@ -35,13 +36,21 @@ from .const import (
 from .exceptions import (
     APIError,
     AuthenticationBlockedError,
+    AuthenticationCcsTokenExchangeError,
+    AuthenticationCciTokenExchangeError,
     AuthenticationCertificateError,
     AuthenticationError,
     AuthenticationInvalidCredentialsError,
     AuthenticationRedirectError,
     AuthenticationServiceError,
     AuthenticationSigninError,
+    AuthenticationTokenExchangeError,
     ConsentRequiredError,
+)
+from .cci_fingerprint import (
+    build_fp_headers,
+    compute_x_fingerprint,
+    is_gate_rejection,
 )
 from .http import http_request
 from .logging_utils import SafeDebugLogger, debug_event
@@ -155,6 +164,33 @@ class KiaUvoApiEU(ApiImplType1):
         self._cci_notification_provider: str = "IOS_APPSTORE"
 
         self.session = ApiImplSession()
+        # At most one legacy fallback per login/refresh cycle (see
+        # _may_fallback_to_legacy): a second gate rejection stops the cycle.
+        self._legacy_fallback_used: bool = False
+
+    def _may_fallback_to_legacy(self, resp, endpoint: str) -> bool:
+        """True once per cycle, only for a genuine fingerprint-gate rejection.
+
+        Upstream #1352/#1481: the legacy route runs only when the signed call
+        was answered by the gate itself (HTTP 4xx and JSON code 9035/9036/
+        9037). Timeouts, 5xx, 4xx without a gate code and unparsable bodies
+        raise instead of being retried on the legacy route. The log carries a
+        fixed endpoint label, never values.
+        """
+        if resp.status_code == 200 or not is_gate_rejection(
+            resp.status_code, resp.text
+        ):
+            return False
+        if self._legacy_fallback_used:
+            return False
+        self._legacy_fallback_used = True
+        _LOGGER.warning(
+            "Kia Connect EU fingerprint gate rejected a signed request "
+            "(endpoint=%s); using the legacy route once for this cycle. "
+            "This fallback is transitional.",
+            endpoint,
+        )
+        return True
 
     def login(
         self,
@@ -166,6 +202,7 @@ class KiaUvoApiEU(ApiImplType1):
             # Fail before any network call: without a password no login is
             # possible, and the caller must trigger a reauth flow.
             raise AuthenticationError("Password missing, reauthentication required")
+        self._legacy_fallback_used = False
         stamp = self._get_stamp()
         try:
             device_id = self._get_device_id(stamp)
@@ -248,6 +285,24 @@ class KiaUvoApiEU(ApiImplType1):
         aware = dt.datetime.now(dt.UTC).astimezone(self.data_timezone)
         off = aware.strftime("%z")  # e.g. +0200
         return f"{off[:3]}:{off[3:]}" if off else "+00:00"
+
+    def _cci_fp_headers(self, device_id: str, body: str = "") -> dict:
+        """Header set for the fingerprint-gated CCI endpoints (Kia identity).
+
+        The gate validates X-Fingerprint against the Android OneApp identity
+        carried in these headers (cci_fingerprint constants), not against the
+        legacy iOS-style identity of _get_cci_headers. Pass the exact request
+        body so the signature covers it.
+        """
+        headers = build_fp_headers(
+            device_id=device_id,
+            locale=self.LANGUAGE,
+            timezone=self._cci_timezone_offset(),
+            package_id=self._cci_package_id,
+        )
+        headers["X-Timestamp"] = str(int(dt.datetime.now(dt.UTC).timestamp() * 1000))
+        headers["X-Fingerprint"] = compute_x_fingerprint(headers, body)
+        return headers
 
     def _get_cci_headers(
         self,
@@ -415,20 +470,7 @@ class KiaUvoApiEU(ApiImplType1):
         code = code_list[0]
 
         # Step 4: exchange auth code for CCI tokens (code in URL query, no body)
-        headers = self._get_cci_headers(device_id)
-        resp = http_request(
-            "POST",
-            f"{self.CCI_DOMAIN_API_URL}v1/auth/token",
-            params={"code": code},
-            headers=headers,
-            timeout=(5, 30),
-        )
-        if resp.status_code != 200:
-            raise AuthenticationError(
-                f"CCI token exchange failed: HTTP {resp.status_code} — "
-                "This may indicate an API change."
-            )
-        cci = resp.json()
+        cci = self._exchange_auth_code_for_cci_tokens(device_id, code)
         cci_access_token = cci.get("accessToken", "")
         cci_refresh_token = cci.get("refreshToken", "")
         non_ccs_token = cci.get("nonCcsToken", "")
@@ -456,6 +498,34 @@ class KiaUvoApiEU(ApiImplType1):
             "id_token": id_token,
         }
 
+    def _exchange_auth_code_for_cci_tokens(self, device_id: str, code: str) -> dict:
+        """Exchange the authorization code for the CCI token set.
+
+        Signed POST {CCI_API_URL}/auth/v1/token first (upstream #1352); the
+        legacy domain/api route runs once, and only on a gate rejection.
+        """
+        resp = http_request(
+            "POST",
+            f"{self.CCI_API_URL}/auth/v1/token",
+            params={"code": code},
+            headers=self._cci_fp_headers(device_id),
+            timeout=(5, 30),
+        )
+        if self._may_fallback_to_legacy(resp, "auth_code_exchange"):
+            resp = http_request(
+                "POST",
+                f"{self.CCI_DOMAIN_API_URL}v1/auth/token",
+                params={"code": code},
+                headers=self._get_cci_headers(device_id),
+                timeout=(5, 30),
+            )
+        if resp.status_code != 200:
+            raise AuthenticationCciTokenExchangeError(
+                f"CCI token exchange failed: HTTP {resp.status_code}. "
+                "This may indicate an API change."
+            )
+        return resp.json()
+
     def _exchange_ccs_token(
         self,
         device_id: str,
@@ -468,28 +538,43 @@ class KiaUvoApiEU(ApiImplType1):
         The CCS token is accepted by the legacy ccapi:8080 vehicle/control
         endpoints as a Bearer access_token. Returns (ccs_token, valid_until).
         """
-        headers = self._get_cci_headers(
-            device_id,
-            cci_access_token=cci_access_token,
-            non_ccs_token=non_ccs_token,
-            exchangeable_token=exchangeable_token,
+        headers = self._cci_fp_headers(device_id)
+        headers["authorization"] = (
+            "Bearer " + (cci_access_token or "").removeprefix("Bearer ").strip()
         )
+        headers["Authentication"] = non_ccs_token or ""
+        if exchangeable_token:
+            headers["exchangeable-token"] = exchangeable_token
+            headers["non-ccs-token"] = non_ccs_token or ""
         resp = http_request(
             "POST",
-            f"{self.CCI_DOMAIN_API_URL}v1/auth/token-exchange",
+            f"{self.CCI_API_URL}/auth/v1/token-exchange",
             params={"serviceType": "CCS"},
             headers=headers,
             timeout=(5, 30),
         )
+        if self._may_fallback_to_legacy(resp, "ccs_token_exchange"):
+            resp = http_request(
+                "POST",
+                f"{self.CCI_DOMAIN_API_URL}v1/auth/token-exchange",
+                params={"serviceType": "CCS"},
+                headers=self._get_cci_headers(
+                    device_id,
+                    cci_access_token=cci_access_token,
+                    non_ccs_token=non_ccs_token,
+                    exchangeable_token=exchangeable_token,
+                ),
+                timeout=(5, 30),
+            )
         if resp.status_code != 200:
-            raise AuthenticationError(
-                f"CCS token exchange failed: HTTP {resp.status_code} — "
+            raise AuthenticationCcsTokenExchangeError(
+                f"CCS token exchange failed: HTTP {resp.status_code}. "
                 "This may indicate an API change."
             )
         data = resp.json()
         ccs_token = data.get("accessToken") or data.get("ccsAccessToken") or ""
         if not ccs_token:
-            raise AuthenticationError(
+            raise AuthenticationCcsTokenExchangeError(
                 "CCS token exchange returned no access token"
             )
         # expiresTime is the CCS token TTL in seconds (e.g. 86400 = 24h), not an
@@ -511,6 +596,7 @@ class KiaUvoApiEU(ApiImplType1):
         token. Legacy/Genesis: use the OAuth2 refresh_token grant. Falls back
         to full login if the refresh token is missing or the exchange fails.
         """
+        self._legacy_fallback_used = False
         if getattr(token, "cci_access_token", None) or getattr(
             token, "non_ccs_token", None
         ):
@@ -554,13 +640,6 @@ class KiaUvoApiEU(ApiImplType1):
         token. Returns a new Token with updated CCI + CCS fields.
         """
         device_id = token.device_id or ""
-        headers = self._get_cci_headers(
-            device_id,
-            cci_access_token=token.cci_access_token,
-            non_ccs_token=token.non_ccs_token,
-            exchangeable_token=token.exchangeable_token,
-            content_type="application/json",
-        )
         body = {
             "accessToken": (token.cci_access_token or "").removeprefix("Bearer "),
             "refreshToken": token.refresh_token or "",
@@ -570,15 +649,33 @@ class KiaUvoApiEU(ApiImplType1):
             "nonCcsRefreshToken": token.non_ccs_refresh_token or "",
             "idToken": token.id_token or "",
         }
+        # Signed over the exact bytes that are sent (data=payload, not json=).
+        payload = json.dumps(body)
+        headers = self._cci_fp_headers(device_id, body=payload)
+        headers["Content-Type"] = "application/json"
         resp = http_request(
             "POST",
-            f"{self.CCI_DOMAIN_API_URL}v2/auth/token-refresh",
+            f"{self.CCI_API_URL}/auth/v2/token-refresh",
+            data=payload,
             headers=headers,
-            json=body,
             timeout=(5, 30),
         )
+        if self._may_fallback_to_legacy(resp, "token_refresh"):
+            resp = http_request(
+                "POST",
+                f"{self.CCI_DOMAIN_API_URL}v2/auth/token-refresh",
+                headers=self._get_cci_headers(
+                    device_id,
+                    cci_access_token=token.cci_access_token,
+                    non_ccs_token=token.non_ccs_token,
+                    exchangeable_token=token.exchangeable_token,
+                    content_type="application/json",
+                ),
+                json=body,
+                timeout=(5, 30),
+            )
         if resp.status_code != 200:
-            raise AuthenticationError(
+            raise AuthenticationTokenExchangeError(
                 f"CCI token refresh failed: HTTP {resp.status_code}"
             )
         data = resp.json()

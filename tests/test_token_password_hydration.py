@@ -1,25 +1,8 @@
 """Regression tests for token password hydration and missing-password handling."""
 
-from pathlib import Path
-import sys
-from types import ModuleType
-from unittest.mock import MagicMock
+from unittest.mock import ANY, MagicMock
 
 import pytest
-
-
-COMPONENT_ROOT = Path(__file__).parent.parent / "custom_components" / "kia_uvo"
-
-
-def _register_namespace(name: str, path: Path) -> None:
-    package = ModuleType(name)
-    package.__path__ = [str(path)]
-    sys.modules.setdefault(name, package)
-
-
-_register_namespace("custom_components", COMPONENT_ROOT.parent)
-_register_namespace("custom_components.kia_uvo", COMPONENT_ROOT)
-_register_namespace("custom_components.kia_uvo._vendor", COMPONENT_ROOT / "_vendor")
 
 from custom_components.kia_uvo._vendor.hyundai_kia_connect_api.exceptions import (
     AuthenticationError,
@@ -76,7 +59,7 @@ def test_cci_refresh_failure_falls_back_to_login_with_password(monkeypatch) -> N
     restored.password = PASSWORD
     restored.pin = PIN
 
-    def _fail(_token):
+    def _fail(_token, *_args):
         raise RuntimeError("boom")
 
     login = MagicMock(return_value="new-token")
@@ -84,7 +67,7 @@ def test_cci_refresh_failure_falls_back_to_login_with_password(monkeypatch) -> N
     monkeypatch.setattr(api, "login", login)
 
     assert api.refresh_access_token(restored) == "new-token"
-    login.assert_called_once_with(USERNAME, PASSWORD, PIN)
+    login.assert_called_once_with(USERNAME, PASSWORD, PIN, cycle=ANY)
 
 
 def test_login_without_password_raises_authentication_error() -> None:
@@ -125,7 +108,7 @@ def test_refresh_warning_logs_type_and_status_only(monkeypatch, caplog) -> None:
     class _HttpError(Exception):
         response = _Response()
 
-    def _fail(_token):
+    def _fail(_token, *_args):
         raise _HttpError("response-body-must-not-leak")
 
     monkeypatch.setattr(api, "_refresh_cci_token", _fail)

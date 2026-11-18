@@ -29,6 +29,7 @@ from .const import (
     DEFAULT_PIN,
     DOMAIN,
     REGIONS,
+    is_legacy_token_password,
 )
 from .coordinator import KiaConnectEuDataUpdateCoordinator
 from .redact import strip_token_credentials
@@ -59,6 +60,15 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     """Set up the configured Kia Connect EU data backend."""
     if config_entry.data.get(CONF_DATA_BACKEND, DATA_BACKEND_CCI) != DATA_BACKEND_CCI:
         raise ConfigEntryNotReady("The Official Data API backend is not available.")
+
+    if is_legacy_token_password(config_entry.data.get(CONF_PASSWORD)):
+        # The 48-character refresh-token login was removed (upstream #1506):
+        # open the reauth flow at once instead of trying a login that cannot
+        # work and would use up the login window.
+        raise ConfigEntryAuthFailed(
+            "The stored password is a legacy 48-character refresh token, which "
+            "is no longer supported. Re-enter the real Kia account password."
+        )
 
     token_data = config_entry.data.get(CONF_TOKEN)
     sanitized_token = strip_token_credentials(token_data)

@@ -6,39 +6,24 @@ opens a socket.
 
 import json
 import logging
-from pathlib import Path
 import sys
-from types import ModuleType
 
 import pytest
 
-
-COMPONENT_ROOT = Path(__file__).parent.parent / "custom_components" / "kia_uvo"
-
-
-def _register_namespace(name: str, path: Path) -> None:
-    package = ModuleType(name)
-    package.__path__ = [str(path)]
-    sys.modules.setdefault(name, package)
-
-
-_register_namespace("custom_components", COMPONENT_ROOT.parent)
-_register_namespace("custom_components.kia_uvo", COMPONENT_ROOT)
-_register_namespace("custom_components.kia_uvo._vendor", COMPONENT_ROOT / "_vendor")
-
-from custom_components.kia_uvo._vendor.hyundai_kia_connect_api import (  # noqa: E402
+from custom_components.kia_uvo._vendor.hyundai_kia_connect_api import (
     cci_fingerprint as fp,
 )
-from custom_components.kia_uvo._vendor.hyundai_kia_connect_api.exceptions import (  # noqa: E402
+from custom_components.kia_uvo._vendor.hyundai_kia_connect_api.exceptions import (
     AuthenticationCcsTokenExchangeError,
     AuthenticationCciTokenExchangeError,
     AuthenticationTokenExchangeError,
     RequestTimeoutError,
 )
-from custom_components.kia_uvo._vendor.hyundai_kia_connect_api.KiaUvoApiEU import (  # noqa: E402
+from custom_components.kia_uvo._vendor.hyundai_kia_connect_api.KiaUvoApiEU import (
     KiaUvoApiEU,
+    _LoginCycle,
 )
-from custom_components.kia_uvo._vendor.hyundai_kia_connect_api.Token import (  # noqa: E402
+from custom_components.kia_uvo._vendor.hyundai_kia_connect_api.Token import (
     Token,
 )
 
@@ -165,9 +150,10 @@ def test_at_most_one_legacy_fallback_per_cycle(monkeypatch) -> None:
         _Resp(200, '{"accessToken":"legacy"}'),
         _Resp(400, GATE_BODY),
     )
-    api._exchange_auth_code_for_cci_tokens("dev", "code")
+    cycle = _LoginCycle()
+    api._exchange_auth_code_for_cci_tokens("dev", "code", cycle)
     with pytest.raises(AuthenticationCcsTokenExchangeError):
-        api._exchange_ccs_token("dev", "Bearer cci", "non-ccs", "exchangeable")
+        api._exchange_ccs_token("dev", "Bearer cci", "non-ccs", "exchangeable", cycle)
     # 2 calls for the code exchange, only the signed attempt for the CCS one.
     assert len(http.calls) == 3
     assert http.calls[2][1].endswith("/auth/v1/token-exchange")
@@ -368,3 +354,46 @@ def test_failed_ccs_exchange_and_refresh_log_their_endpoint(monkeypatch, caplog)
         with pytest.raises(AuthenticationTokenExchangeError):
             api._refresh_cci_token(_token())
     assert "exchange_failed endpoint=token_refresh status=401 code=9030" in caplog.text
+
+
+def test_refresh_then_login_share_one_legacy_fallback(monkeypatch) -> None:
+    """A cycle spanning refresh and the login that follows allows ONE fallback."""
+    api, http = _api(
+        monkeypatch,
+        _Resp(400, GATE_BODY),  # signed refresh: gate rejection
+        _Resp(500, "legacy refresh down"),  # the one legacy fallback: fails
+        _Resp(400, GATE_BODY),  # signed code exchange of the login: gate again
+    )
+    cycles = []
+
+    def _login_with_password(_user, _password, device_id, cycle=None):
+        cycles.append(cycle)
+        return api._exchange_auth_code_for_cci_tokens(device_id, "code", cycle)
+
+    monkeypatch.setattr(api, "_get_stamp", lambda: "stamp")
+    monkeypatch.setattr(api, "_get_device_id", lambda _stamp: "dev")
+    monkeypatch.setattr(api, "_get_cookies", lambda: {})
+    monkeypatch.setattr(api, "_set_session_language", lambda _cookies: None)
+    monkeypatch.setattr(api, "_login_with_password", _login_with_password)
+
+    with pytest.raises(AuthenticationCciTokenExchangeError):
+        api.refresh_access_token(_token())
+
+    assert len(http.calls) == 3  # no second fallback in the login
+    assert http.calls[1][1].endswith("/domain/api/v2/auth/token-refresh")
+    assert http.calls[2][1].endswith("/auth/v1/token")
+    assert isinstance(cycles[0], _LoginCycle) and cycles[0].fallback_used
+
+
+def test_each_new_cycle_gets_its_own_fallback(monkeypatch) -> None:
+    api, http = _api(
+        monkeypatch,
+        _Resp(400, GATE_BODY),
+        _Resp(200, '{"accessToken":"a"}'),
+        _Resp(400, GATE_BODY),
+        _Resp(200, '{"accessToken":"b"}'),
+    )
+    assert api._exchange_auth_code_for_cci_tokens("d", "c")["accessToken"] == "a"
+    assert api._exchange_auth_code_for_cci_tokens("d", "c")["accessToken"] == "b"
+    assert len(http.calls) == 4
+    assert not hasattr(api, "_legacy_fallback_used")

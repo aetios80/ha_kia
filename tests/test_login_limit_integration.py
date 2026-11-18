@@ -20,28 +20,18 @@ import pytest
 COMPONENT_ROOT = Path(__file__).parent.parent / "custom_components" / "kia_uvo"
 
 
-def _register_namespace(name: str, path: Path) -> None:
-    package = ModuleType(name)
-    package.__path__ = [str(path)]
-    sys.modules.setdefault(name, package)
-
-
-_register_namespace("custom_components", COMPONENT_ROOT.parent)
-_register_namespace("custom_components.kia_uvo", COMPONENT_ROOT)
-_register_namespace("custom_components.kia_uvo._vendor", COMPONENT_ROOT / "_vendor")
-
-from custom_components.kia_uvo._vendor.hyundai_kia_connect_api.exceptions import (  # noqa: E402
+from custom_components.kia_uvo._vendor.hyundai_kia_connect_api.exceptions import (
     AuthenticationError,
     LoginAttemptFailedError,
 )
-from custom_components.kia_uvo._vendor.hyundai_kia_connect_api.login_guard import (  # noqa: E402
+from custom_components.kia_uvo._vendor.hyundai_kia_connect_api.login_guard import (
     LOGIN_WINDOW_SECONDS,
     LoginGuard,
 )
-from custom_components.kia_uvo._vendor.hyundai_kia_connect_api.Token import (  # noqa: E402
+from custom_components.kia_uvo._vendor.hyundai_kia_connect_api.Token import (
     Token,
 )
-from custom_components.kia_uvo.const import CONF_LOGIN_GUARD, CONF_TOKEN  # noqa: E402
+from custom_components.kia_uvo.const import CONF_LOGIN_GUARD, CONF_TOKEN
 
 USERNAME = "user@example.test"
 PASSWORD = "s3cret-test-password"
@@ -125,6 +115,7 @@ def _stub_modules() -> dict:
             CONF_REGION="region",
             CONF_SCAN_INTERVAL="scan_interval",
             CONF_USERNAME="username",
+            Platform=MagicMock(),
         ),
         "homeassistant.core": mod(
             "homeassistant.core", HomeAssistant=object, callback=lambda func: func
@@ -133,6 +124,7 @@ def _stub_modules() -> dict:
             "homeassistant.exceptions",
             HomeAssistantError=_HomeAssistantError,
             ConfigEntryAuthFailed=_ConfigEntryAuthFailed,
+            ConfigEntryNotReady=_HomeAssistantError,
         ),
         "homeassistant.helpers": mod("homeassistant.helpers"),
         "homeassistant.helpers.update_coordinator": mod(
@@ -146,16 +138,20 @@ def _stub_modules() -> dict:
         "homeassistant.util": mod("homeassistant.util", dt=dt_module),
         "homeassistant.util.dt": dt_module,
         "voluptuous": MagicMock(),
+        "homeassistant.helpers.entity_registry": MagicMock(),
+        "homeassistant.helpers.device_registry": MagicMock(),
     }
 
 
-def _load(filename: str, alias: str) -> ModuleType:
-    stubs = _stub_modules()
+def _load(filename: str, alias: str, extra: dict | None = None) -> ModuleType:
+    stubs = {**_stub_modules(), **(extra or {})}
     saved = {name: sys.modules.get(name) for name in stubs}
     sys.modules.update(stubs)
     try:
         spec = importlib.util.spec_from_file_location(
-            f"custom_components.kia_uvo.{alias}", COMPONENT_ROOT / filename
+            f"custom_components.kia_uvo.{alias}",
+            COMPONENT_ROOT / filename,
+            submodule_search_locations=None,  # load __init__.py as a plain module
         )
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
@@ -177,6 +173,7 @@ class _Hass:
         self.reloads = []
 
     async def async_add_executor_job(self, func, *args):
+        await asyncio.sleep(0)  # let concurrent callers interleave
         return func(*args)
 
     def async_update_entry(self, entry, data=None, **_kwargs):
@@ -252,12 +249,19 @@ def test_throttled_poll_is_update_failed_with_remaining_time_not_reauth() -> Non
 
 def test_attempt_failed_poll_is_update_failed() -> None:
     def _refresh(_manager):
-        raise LoginAttemptFailedError("waf", retry_after=3000)
+        raise LoginAttemptFailedError("waf", retry_after=21000)
 
     _module, coordinator, _hass, _entry = _coordinator(_refresh)
     with pytest.raises(_UpdateFailed) as excinfo:
         _poll(coordinator)
-    assert excinfo.value.retry_after == 3000
+    # Capped: the cheap CCI refresh is retried within 30 minutes.
+    assert excinfo.value.retry_after == 1800
+    _module2, short, _hass2, _entry2 = _coordinator(
+        lambda _m: (_ for _ in ()).throw(LoginAttemptFailedError("x", retry_after=300))
+    )
+    with pytest.raises(_UpdateFailed) as short_exc:
+        _poll(short)
+    assert short_exc.value.retry_after == 300
 
 
 def test_authentication_error_still_starts_reauth() -> None:
@@ -368,3 +372,128 @@ def test_reauth_and_reconfigure_reset_the_login_limit() -> None:
     flow._is_reconfigure = True
     asyncio.run(flow.async_step_credentials_password(user_input))
     assert flow.reload_data_updates[CONF_LOGIN_GUARD] == fresh
+
+
+def _fresh_token_behaviour(counter):
+    def _refresh(manager):
+        counter.append(1)
+        manager.token.valid_until = dt.datetime.now(dt.UTC) + dt.timedelta(hours=1)
+
+    return _refresh
+
+
+def test_concurrent_refreshes_run_once() -> None:
+    calls: list = []
+    _module, coordinator, _hass, _entry = _coordinator(_fresh_token_behaviour(calls))
+
+    async def _run():
+        await asyncio.gather(
+            coordinator.async_check_and_refresh_token(),
+            coordinator.async_check_and_refresh_token(for_command=True),
+            coordinator.async_check_and_refresh_token(for_command=True),
+        )
+
+    asyncio.run(_run())
+    assert len(calls) == 1  # the waiters found the token already refreshed
+
+
+def test_a_waiter_still_refreshes_when_the_first_caller_failed() -> None:
+    calls: list = []
+
+    def _refresh(manager):
+        calls.append(1)
+        if len(calls) == 1:
+            raise RuntimeError("first attempt fails")
+        manager.token.valid_until = dt.datetime.now(dt.UTC) + dt.timedelta(hours=1)
+
+    _module, coordinator, _hass, _entry = _coordinator(_refresh)
+
+    async def _run():
+        return await asyncio.gather(
+            coordinator.async_check_and_refresh_token(),
+            coordinator.async_check_and_refresh_token(),
+            return_exceptions=True,
+        )
+
+    results = asyncio.run(_run())
+    assert len(calls) == 2
+    assert isinstance(results[0], RuntimeError) and results[1] is None
+
+
+def test_poll_and_service_do_not_overlap_in_the_executor() -> None:
+    active = []
+    peak = []
+
+    def _refresh(manager):
+        active.append(1)
+        peak.append(len(active))
+        manager.token.valid_until = dt.datetime(2000, 1, 1, tzinfo=dt.UTC)  # stale
+        active.pop()
+
+    _module, coordinator, _hass, _entry = _coordinator(_refresh)
+
+    async def _run():
+        await asyncio.gather(
+            coordinator.async_check_and_refresh_token(),
+            coordinator.async_check_and_refresh_token(for_command=True),
+        )
+
+    asyncio.run(_run())
+    assert max(peak) == 1
+
+
+def test_legacy_48_char_token_password_opens_reauth_without_login() -> None:
+    from custom_components.kia_uvo.const import is_legacy_token_password
+
+    assert is_legacy_token_password("A1" * 24)
+    for not_legacy in ("A1" * 24 + "A", "a1" * 24, "A-" * 24, "p" * 20, None, 48, ""):
+        assert not is_legacy_token_password(not_legacy)
+
+    created = []
+
+    class _FakeCoordinator:
+        def __init__(self, hass, entry):
+            created.append(entry)
+
+        async def async_config_entry_first_refresh(self):
+            return None
+
+    class _Services:
+        async_setup_services = staticmethod(lambda hass: None)
+        async_unload_services = staticmethod(lambda hass: None)
+
+    fake_coordinator = ModuleType("custom_components.kia_uvo.coordinator")
+    fake_coordinator.KiaConnectEuDataUpdateCoordinator = _FakeCoordinator
+    fake_services = ModuleType("custom_components.kia_uvo.services")
+    fake_services.async_setup_services = _Services.async_setup_services
+    fake_services.async_unload_services = _Services.async_unload_services
+    module = _load(
+        "__init__.py",
+        "init_under_test",
+        {
+            "custom_components.kia_uvo.coordinator": fake_coordinator,
+            "custom_components.kia_uvo.services": fake_services,
+        },
+    )
+
+    class _SetupHass(_Hass):
+        data: dict = {}
+
+        async def async_forward_entry_setups(self, entry, platforms):
+            return None
+
+    legacy_entry = _Entry({**_entry_data(), "password": "A1" * 24})
+    legacy_entry.unique_id = "uid"
+    hass = _SetupHass(legacy_entry)
+    hass.data = {}
+    with pytest.raises(_ConfigEntryAuthFailed) as excinfo:
+        asyncio.run(module.async_setup_entry(hass, legacy_entry))
+    assert "48-character" in str(excinfo.value)
+    assert created == []  # no coordinator, hence no login attempt
+
+    normal_entry = _Entry(_entry_data())
+    normal_entry.unique_id = "uid"
+    hass = _SetupHass(normal_entry)
+    hass.data = {}
+    assert asyncio.run(module.async_setup_entry(hass, normal_entry)) is True
+    assert len(created) == 1

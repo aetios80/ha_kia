@@ -115,6 +115,20 @@ SUPPORTED_LANGUAGES_LIST = [
 ]
 
 
+class _LoginCycle:
+    """State of one login/refresh cycle, created at its entry point.
+
+    Passed down explicitly (never stored on the shared API object, which is
+    used from several executor threads): a cycle allows ONE legacy fallback
+    in total, whichever of refresh, code exchange or CCS exchange uses it.
+    """
+
+    __slots__ = ("fallback_used",)
+
+    def __init__(self) -> None:
+        self.fallback_used: bool = False
+
+
 class KiaUvoApiEU(ApiImplType1):
     # Owned by the integration (coordinator) and injected through the
     # VehicleManager; None means "no limit" (config flow, first login).
@@ -167,9 +181,6 @@ class KiaUvoApiEU(ApiImplType1):
         self._cci_notification_provider: str = "IOS_APPSTORE"
 
         self.session = ApiImplSession()
-        # At most one legacy fallback per login/refresh cycle (see
-        # _may_fallback_to_legacy): a second gate rejection stops the cycle.
-        self._legacy_fallback_used: bool = False
 
     @staticmethod
     def _log_exchange_failure(resp, endpoint: str) -> None:
@@ -193,22 +204,24 @@ class KiaUvoApiEU(ApiImplType1):
             code,
         )
 
-    def _may_fallback_to_legacy(self, resp, endpoint: str) -> bool:
-        """True once per cycle, only for a genuine fingerprint-gate rejection.
+    def _consume_legacy_fallback(
+        self, resp, endpoint: str, cycle: _LoginCycle
+    ) -> bool:
+        """Consume the cycle's single legacy fallback; True if it may be used.
 
-        Upstream #1352: the legacy route runs only when the signed call
-        was answered by the gate itself (HTTP 4xx and JSON code 9035/9036/
-        9037). Timeouts, 5xx, 4xx without a gate code and unparsable bodies
-        raise instead of being retried on the legacy route. The log carries a
-        fixed endpoint label, never values.
+        Side effect: marks the fallback as used. Upstream #1352: the legacy
+        route runs only when the signed call was answered by the gate itself
+        (HTTP 4xx and JSON code 9035/9036/9037). Timeouts, 5xx, 4xx without a
+        gate code and unparsable bodies raise instead. The log carries a fixed
+        endpoint label, never values.
         """
         if resp.status_code == 200 or not is_gate_rejection(
             resp.status_code, resp.text
         ):
             return False
-        if self._legacy_fallback_used:
+        if cycle.fallback_used:
             return False
-        self._legacy_fallback_used = True
+        cycle.fallback_used = True
         _LOGGER.warning(
             "Kia Connect EU fingerprint gate rejected a signed request "
             "(endpoint=%s); using the legacy route once for this cycle. "
@@ -217,17 +230,47 @@ class KiaUvoApiEU(ApiImplType1):
         )
         return True
 
+    def _post_gated(
+        self,
+        *,
+        endpoint: str,
+        label: str,
+        error: type[AuthenticationError],
+        cycle: _LoginCycle | None,
+        signed: tuple[str, dict],
+        legacy,
+    ):
+        """Signed POST, at most one legacy POST on a gate rejection, then check.
+
+        `signed` is (url, request kwargs); `legacy` builds the same pair for the
+        legacy route and is only called if the fallback is consumed.
+        """
+        cycle = cycle or _LoginCycle()
+        url, kwargs = signed
+        resp = http_request("POST", url, timeout=(5, 30), **kwargs)
+        if self._consume_legacy_fallback(resp, endpoint, cycle):
+            legacy_url, legacy_kwargs = legacy()
+            resp = http_request("POST", legacy_url, timeout=(5, 30), **legacy_kwargs)
+        if resp.status_code != 200:
+            self._log_exchange_failure(resp, endpoint)
+            raise error(
+                f"{label} failed: HTTP {resp.status_code}. "
+                "This may indicate an API change."
+            )
+        return resp
+
     def login(
         self,
         username: str,
         password: str,
         pin: str | None = None,
+        cycle: _LoginCycle | None = None,
     ) -> Token:
         if not password:
             # Fail before any network call: without a password no login is
             # possible, and the caller must trigger a reauth flow.
             raise AuthenticationError("Password missing, reauthentication required")
-        self._legacy_fallback_used = False
+        cycle = cycle or _LoginCycle()
         stamp = self._get_stamp()
         try:
             device_id = self._get_device_id(stamp)
@@ -246,7 +289,7 @@ class KiaUvoApiEU(ApiImplType1):
 
         # Upstream #1506: the legacy 48-char refresh-token "password" is gone.
         # Every password, whatever its shape, goes through the CCI login.
-        info = self._login_with_password(username, password, device_id)
+        info = self._login_with_password(username, password, device_id, cycle)
         # The CCI flow always returns the CCS token expiry as valid_until.
         valid_until = info["valid_until"]
 
@@ -267,7 +310,11 @@ class KiaUvoApiEU(ApiImplType1):
         )
 
     def _login_with_password(
-        self, username: str, password: str, device_id: str
+        self,
+        username: str,
+        password: str,
+        device_id: str,
+        cycle: _LoginCycle | None = None,
     ) -> dict:
         """Headless login using username + plaintext password (OneApp/CCI flow).
 
@@ -279,7 +326,7 @@ class KiaUvoApiEU(ApiImplType1):
         Raises:
             AuthenticationError: If login fails.
         """
-        return self._login_with_password_cci(username, password, device_id)
+        return self._login_with_password_cci(username, password, device_id, cycle)
 
     def _cci_timezone_offset(self) -> str:
         """Current UTC offset of the EU data timezone as '+HH:MM'."""
@@ -349,7 +396,11 @@ class KiaUvoApiEU(ApiImplType1):
         return headers
 
     def _login_with_password_cci(
-        self, username: str, password: str, device_id: str
+        self,
+        username: str,
+        password: str,
+        device_id: str,
+        cycle: _LoginCycle | None = None,
     ) -> dict:
         """OneApp/CCI password login for Kia Connect EU.
 
@@ -423,66 +474,25 @@ class KiaUvoApiEU(ApiImplType1):
                 f"Signin failed: identity provider error HTTP {resp.status_code}."
             )
         if resp.status_code != 302:
+            if 400 <= resp.status_code < 500:
+                # Generic 4xx (400, 401, ...): like the login-page redirect it
+                # is ambiguous, so it is counted, not an immediate reauth.
+                _LOGGER.warning("Kia Connect EU signin outcome=rejected_4xx")
+                raise AuthenticationRedirectError(
+                    "Kia rejected the signin with a client error. The cause can "
+                    "be a rejected User-Agent or a wrong password (credentials)."
+                )
             raise AuthenticationSigninError(
-                f"Signin failed: HTTP {resp.status_code}. "
-                "Check username and password."
+                f"Signin failed: unexpected HTTP {resp.status_code}."
             )
         location = resp.headers.get("location", "")
         code_list = parse_qs(urlparse(location).query).get("code")
         if not code_list:
-            query = parse_qs(urlparse(location).query)
-            if "/error?status=400" in location:
-                raise AuthenticationBlockedError(
-                    "Signin was blocked by the identity provider (WAF). This "
-                    "is a server-side block, not a proven credentials problem."
-                )
-            if query.get("error"):
-                # Upstream #1477: only an explicit "invalid credentials" is a
-                # proven credentials problem. Only a sanitised error code is
-                # reported, never the URL or the free-text description.
-                error_desc = query.get("error_description", [""])[0]
-                if error_desc.strip().casefold() == "invalid credentials":
-                    raise AuthenticationInvalidCredentialsError(
-                        "Authentication rejected: invalid credentials."
-                    )
-                error_code = re.sub(r"[^A-Za-z0-9_.-]", "", query["error"][0])[:40]
-                _LOGGER.warning("Kia Connect EU signin outcome=error")
-                raise AuthenticationSigninError(
-                    "Authentication rejected by the identity provider "
-                    f"(error code: {error_code or 'unknown'})."
-                )
-            if "/web/v1/user/authorization" in location:
-                _LOGGER.warning("Kia Connect EU signin outcome=consent")
-                raise ConsentRequiredError(
-                    "Account consent is required. Please log in via a browser "
-                    "once to accept the terms, then retry."
-                )
-            if "authorize" in location:
-                message = (
-                    "Kia redirected the signin back to the login page without "
-                    "an authorization code. The cause can be a rejected "
-                    "User-Agent or a wrong password (credentials): the redirect "
-                    "does not tell them apart."
-                )
-                if len(password) > 20:
-                    # Upstream #1536: some EU accounts only hold the first 20
-                    # characters of a longer password. Neither the password
-                    # nor its exact length is ever reported.
-                    message += (
-                        " Hint: the password is longer than 20 characters and "
-                        "some accounts only accept its first 20."
-                    )
-                # Fixed text only: no URL, query, code or token in the log.
-                _LOGGER.warning("Kia Connect EU signin outcome=login_page. %s", message)
-                raise AuthenticationRedirectError(message)
-            _LOGGER.warning("Kia Connect EU signin outcome=unexpected_redirect")
-            raise AuthenticationRedirectError(
-                "API error: unexpected redirect after signin."
-            )
+            self._raise_for_signin_redirect(location, password)
         code = code_list[0]
 
         # Step 4: exchange auth code for CCI tokens (code in URL query, no body)
-        cci = self._exchange_auth_code_for_cci_tokens(device_id, code)
+        cci = self._exchange_auth_code_for_cci_tokens(device_id, code, cycle)
         cci_access_token = cci.get("accessToken", "")
         cci_refresh_token = cci.get("refreshToken", "")
         non_ccs_token = cci.get("nonCcsToken", "")
@@ -494,7 +504,7 @@ class KiaUvoApiEU(ApiImplType1):
 
         # Step 5: exchange CCI token for a CCS token (usable on legacy ccapi:8080)
         ccs_token, ccs_valid_until = self._exchange_ccs_token(
-            device_id, cci_access_token, non_ccs_token, exchangeable_token
+            device_id, cci_access_token, non_ccs_token, exchangeable_token, cycle
         )
 
         return {
@@ -510,33 +520,85 @@ class KiaUvoApiEU(ApiImplType1):
             "id_token": id_token,
         }
 
-    def _exchange_auth_code_for_cci_tokens(self, device_id: str, code: str) -> dict:
+    def _raise_for_signin_redirect(self, location: str, password: str) -> None:
+        """Classify a signin 302 that carries no authorization code. Always raises.
+
+        Only an explicit "invalid credentials" is a proven credentials
+        problem (upstream #1477). Logs and messages carry fixed categories
+        and at most a sanitised error code, never the URL, query or tokens.
+        """
+        query = parse_qs(urlparse(location).query)
+        if "/error?status=400" in location:
+            raise AuthenticationBlockedError(
+                "Signin was blocked by the identity provider (WAF). This "
+                "is a server-side block, not a proven credentials problem."
+            )
+        if query.get("error"):
+            # Upstream #1477: only an explicit "invalid credentials" is a
+            # proven credentials problem. Only a sanitised error code is
+            # reported, never the URL or the free-text description.
+            error_desc = query.get("error_description", [""])[0]
+            if error_desc.strip().casefold() == "invalid credentials":
+                raise AuthenticationInvalidCredentialsError(
+                    "Authentication rejected: invalid credentials."
+                )
+            error_code = re.sub(r"[^A-Za-z0-9_.-]", "", query["error"][0])[:40]
+            _LOGGER.warning("Kia Connect EU signin outcome=error")
+            raise AuthenticationRedirectError(
+                "Authentication rejected by the identity provider "
+                f"(error code: {error_code or 'unknown'})."
+            )
+        if "/web/v1/user/authorization" in location:
+            _LOGGER.warning("Kia Connect EU signin outcome=consent")
+            raise ConsentRequiredError(
+                "Account consent is required. Please log in via a browser "
+                "once to accept the terms, then retry."
+            )
+        if "authorize" in location:
+            message = (
+                "Kia redirected the signin back to the login page without "
+                "an authorization code. The cause can be a rejected "
+                "User-Agent or a wrong password (credentials): the redirect "
+                "does not tell them apart."
+            )
+            if len(password) > 20:
+                # Upstream #1536: some EU accounts only hold the first 20
+                # characters of a longer password. Neither the password
+                # nor its exact length is ever reported.
+                message += (
+                    " Hint: the password is longer than 20 characters and "
+                    "some accounts only accept its first 20."
+                )
+            # Fixed text only: no URL, query, code or token in the log.
+            _LOGGER.warning("Kia Connect EU signin outcome=login_page. %s", message)
+            raise AuthenticationRedirectError(message)
+        _LOGGER.warning("Kia Connect EU signin outcome=unexpected_redirect")
+        raise AuthenticationRedirectError(
+            "API error: unexpected redirect after signin."
+        )
+
+    def _exchange_auth_code_for_cci_tokens(
+        self, device_id: str, code: str, cycle: _LoginCycle | None = None
+    ) -> dict:
         """Exchange the authorization code for the CCI token set.
 
         Signed POST {CCI_API_URL}/auth/v1/token first (upstream #1352); the
-        legacy domain/api route runs once, and only on a gate rejection.
+        legacy domain/api route runs once per cycle, only on a gate rejection.
         """
-        resp = http_request(
-            "POST",
-            f"{self.CCI_API_URL}/auth/v1/token",
-            params={"code": code},
-            headers=self._cci_fp_headers(device_id),
-            timeout=(5, 30),
-        )
-        if self._may_fallback_to_legacy(resp, "auth_code_exchange"):
-            resp = http_request(
-                "POST",
+        resp = self._post_gated(
+            endpoint="auth_code_exchange",
+            label="CCI token exchange",
+            error=AuthenticationCciTokenExchangeError,
+            cycle=cycle,
+            signed=(
+                f"{self.CCI_API_URL}/auth/v1/token",
+                {"params": {"code": code}, "headers": self._cci_fp_headers(device_id)},
+            ),
+            legacy=lambda: (
                 f"{self.CCI_DOMAIN_API_URL}v1/auth/token",
-                params={"code": code},
-                headers=self._get_cci_headers(device_id),
-                timeout=(5, 30),
-            )
-        if resp.status_code != 200:
-            self._log_exchange_failure(resp, "auth_code_exchange")
-            raise AuthenticationCciTokenExchangeError(
-                f"CCI token exchange failed: HTTP {resp.status_code}. "
-                "This may indicate an API change."
-            )
+                {"params": {"code": code}, "headers": self._get_cci_headers(device_id)},
+            ),
+        )
         return resp.json()
 
     def _exchange_ccs_token(
@@ -545,6 +607,7 @@ class KiaUvoApiEU(ApiImplType1):
         cci_access_token: str,
         non_ccs_token: str,
         exchangeable_token: str,
+        cycle: _LoginCycle | None = None,
     ) -> tuple[str, dt.datetime]:
         """Exchange a CCI access token for a CCS token (token-exchange?serviceType=CCS).
 
@@ -559,32 +622,28 @@ class KiaUvoApiEU(ApiImplType1):
         if exchangeable_token:
             headers["exchangeable-token"] = exchangeable_token
             headers["non-ccs-token"] = non_ccs_token or ""
-        resp = http_request(
-            "POST",
-            f"{self.CCI_API_URL}/auth/v1/token-exchange",
-            params={"serviceType": "CCS"},
-            headers=headers,
-            timeout=(5, 30),
-        )
-        if self._may_fallback_to_legacy(resp, "ccs_token_exchange"):
-            resp = http_request(
-                "POST",
+        resp = self._post_gated(
+            endpoint="ccs_token_exchange",
+            label="CCS token exchange",
+            error=AuthenticationCcsTokenExchangeError,
+            cycle=cycle,
+            signed=(
+                f"{self.CCI_API_URL}/auth/v1/token-exchange",
+                {"params": {"serviceType": "CCS"}, "headers": headers},
+            ),
+            legacy=lambda: (
                 f"{self.CCI_DOMAIN_API_URL}v1/auth/token-exchange",
-                params={"serviceType": "CCS"},
-                headers=self._get_cci_headers(
-                    device_id,
-                    cci_access_token=cci_access_token,
-                    non_ccs_token=non_ccs_token,
-                    exchangeable_token=exchangeable_token,
-                ),
-                timeout=(5, 30),
-            )
-        if resp.status_code != 200:
-            self._log_exchange_failure(resp, "ccs_token_exchange")
-            raise AuthenticationCcsTokenExchangeError(
-                f"CCS token exchange failed: HTTP {resp.status_code}. "
-                "This may indicate an API change."
-            )
+                {
+                    "params": {"serviceType": "CCS"},
+                    "headers": self._get_cci_headers(
+                        device_id,
+                        cci_access_token=cci_access_token,
+                        non_ccs_token=non_ccs_token,
+                        exchangeable_token=exchangeable_token,
+                    ),
+                },
+            ),
+        )
         data = resp.json()
         ccs_token = data.get("accessToken") or data.get("ccsAccessToken") or ""
         if not ccs_token:
@@ -605,32 +664,39 @@ class KiaUvoApiEU(ApiImplType1):
     def refresh_access_token(self, token: Token) -> Token:
         """Refresh access token using the stored refresh token.
 
-        EU Hyundai/Kia (CCI flow): refresh the CCI token set via
-        cci-api-eu/domain/api/v2/auth/token-refresh, then re-exchange the CCS
-        token. Legacy/Genesis: use the OAuth2 refresh_token grant. Falls back
-        to full login if the refresh token is missing or the exchange fails.
+        Refresh the CCI token set via the signed /auth/v2/token-refresh, then
+        re-exchange the CCS token. Falls back to a full login (behind the
+        login limit) if the CCI fields are missing or the refresh fails. One
+        _LoginCycle spans refresh and fallback login: one legacy fallback in
+        total.
         """
-        self._legacy_fallback_used = False
+        cycle = _LoginCycle()
         if getattr(token, "cci_access_token", None) or getattr(
             token, "non_ccs_token", None
         ):
             try:
-                return self._refresh_cci_token(token)
+                return self._refresh_cci_token(token, cycle)
             except Exception as err:
                 _LOGGER.warning(
                     "CCI token refresh failed (%s); the full-login fallback follows, "
                     "subject to the login limit",
                     _describe_refresh_error(err),
                 )
-                return self._guarded_login(token.username, token.password, token.pin)
+                return self._guarded_login(
+                    token.username, token.password, token.pin, cycle
+                )
 
         # Upstream #1507: no OAuth2 refresh_token grant any more. A token
         # without CCI fields (pre-CCI install) is migrated by a full CCI login
         # with the stored password.
-        return self._guarded_login(token.username, token.password, token.pin)
+        return self._guarded_login(token.username, token.password, token.pin, cycle)
 
     def _guarded_login(
-        self, username: str, password: str, pin: str | None = None
+        self,
+        username: str,
+        password: str,
+        pin: str | None = None,
+        cycle: _LoginCycle | None = None,
     ) -> Token:
         """Full login for the refresh fallback, behind the login limit.
 
@@ -649,12 +715,16 @@ class KiaUvoApiEU(ApiImplType1):
         - network errors and timeouts propagate unchanged and do not count
           as failures (the attempt still uses the window).
         """
+        if not password:
+            # No network without a password: do not consume the login window.
+            raise AuthenticationError("Password missing, reauthentication required")
+        cycle = cycle or _LoginCycle()
         guard = self.login_guard
         if guard is None:
-            return self.login(username, password, pin)
+            return self.login(username, password, pin, cycle=cycle)
         guard.begin_attempt()
         try:
-            token = self.login(username, password, pin)
+            token = self.login(username, password, pin, cycle=cycle)
         except AuthenticationInvalidCredentialsError:
             raise
         except AuthenticationRedirectError as err:
@@ -679,7 +749,9 @@ class KiaUvoApiEU(ApiImplType1):
         guard.record_success()
         return token
 
-    def _refresh_cci_token(self, token: Token) -> Token:
+    def _refresh_cci_token(
+        self, token: Token, cycle: _LoginCycle | None = None
+    ) -> Token:
         """Refresh the CCI token set and re-exchange the CCS token.
 
         POST cci-api-eu/domain/api/v2/auth/token-refresh with the full CCI
@@ -700,32 +772,29 @@ class KiaUvoApiEU(ApiImplType1):
         payload = json.dumps(body)
         headers = self._cci_fp_headers(device_id, body=payload)
         headers["Content-Type"] = "application/json"
-        resp = http_request(
-            "POST",
-            f"{self.CCI_API_URL}/auth/v2/token-refresh",
-            data=payload,
-            headers=headers,
-            timeout=(5, 30),
-        )
-        if self._may_fallback_to_legacy(resp, "token_refresh"):
-            resp = http_request(
-                "POST",
+        resp = self._post_gated(
+            endpoint="token_refresh",
+            label="CCI token refresh",
+            error=AuthenticationTokenExchangeError,
+            cycle=cycle,
+            signed=(
+                f"{self.CCI_API_URL}/auth/v2/token-refresh",
+                {"data": payload, "headers": headers},
+            ),
+            legacy=lambda: (
                 f"{self.CCI_DOMAIN_API_URL}v2/auth/token-refresh",
-                headers=self._get_cci_headers(
-                    device_id,
-                    cci_access_token=token.cci_access_token,
-                    non_ccs_token=token.non_ccs_token,
-                    exchangeable_token=token.exchangeable_token,
-                    content_type="application/json",
-                ),
-                json=body,
-                timeout=(5, 30),
-            )
-        if resp.status_code != 200:
-            self._log_exchange_failure(resp, "token_refresh")
-            raise AuthenticationTokenExchangeError(
-                f"CCI token refresh failed: HTTP {resp.status_code}"
-            )
+                {
+                    "headers": self._get_cci_headers(
+                        device_id,
+                        cci_access_token=token.cci_access_token,
+                        non_ccs_token=token.non_ccs_token,
+                        exchangeable_token=token.exchangeable_token,
+                        content_type="application/json",
+                    ),
+                    "json": body,
+                },
+            ),
+        )
         data = resp.json()
         cci_access_token = data.get("accessToken", token.cci_access_token or "")
         cci_refresh_token = data.get("refreshToken", token.refresh_token or "")
@@ -750,7 +819,7 @@ class KiaUvoApiEU(ApiImplType1):
 
         # Re-exchange the CCS token (accepted by legacy ccapi:8080)
         ccs_token, ccs_valid_until = self._exchange_ccs_token(
-            device_id, cci_access_token, non_ccs_token, exchangeable_token
+            device_id, cci_access_token, non_ccs_token, exchangeable_token, cycle
         )
 
         return Token(

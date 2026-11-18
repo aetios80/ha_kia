@@ -41,6 +41,13 @@ In Home Assistant, open **Settings** -> **Devices & Services** -> **Integrations
 - Passwords longer than 20 characters may be accepted by some Kia accounts only up to the first 20 characters.
 - Breaking change: a 48-character refresh token used as the password is no longer supported. Reconfigure the entry with the real account password.
 
+## Release notes 4.0.4
+
+- Fixes the EU signin rejected since 2026-10-22 (current browser User-Agent) and signs the CCI auth calls with X-Fingerprint as the official app does; the legacy route is used once per login cycle, and only when Kia's fingerprint gate rejects the signed request.
+- Full password logins are limited as described above. After a failed full login (Kia block, server error, timeout) the cheap token refresh is retried within 30 minutes at most; a new full login still waits for the 6-hour window. The 30-minute value is a deliberate choice, not a Kia-provided number.
+- A stored 48-character refresh token used as the password now opens the reauthentication flow at setup, without any login attempt.
+- Tests: the automated tests of this release were run with a temporary stub runner (no pytest, no Home Assistant) and the signing vectors with the Python standard library only. The RSA password encryption (pycryptodome) was not exercised by them, and nothing was tested against the live Kia service before release: read the log lines `signin outcome=...` and `exchange_failed endpoint=... status=... code=...` on the first live run.
+
 ## Security and Privacy
 
 - Password and PIN fields are masked in the configuration flow.

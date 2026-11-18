@@ -14,6 +14,24 @@ CONF_TOKEN: str = "token"
 # Login limit state (last attempt, consecutive failures). Kept apart from
 # CONF_TOKEN on purpose: it holds no credential and no account data.
 CONF_LOGIN_GUARD: str = "login_guard"
+# After a failed full login (WAF, 5xx, timeout, exchange error) the coordinator
+# retries the cheap CCI refresh after at most this many seconds; the full-login
+# limit itself (one per 6 hours) is enforced by the login guard, not by this.
+LOGIN_FAILED_RETRY_CAP_SECONDS: int = 1800
+
+# A 48-character token used as "password" (removed legacy login, #1506).
+LEGACY_TOKEN_PASSWORD_LENGTH: int = 48
+
+
+def is_legacy_token_password(password: object) -> bool:
+    """True for a stored password shaped like the removed 48-char token."""
+    return (
+        isinstance(password, str)
+        and len(password) == LEGACY_TOKEN_PASSWORD_LENGTH
+        and password.isascii()
+        and all(c.isdigit() or ("A" <= c <= "Z") for c in password)
+    )
+
 CONF_DATA_BACKEND: str = "data_backend"
 
 DATA_BACKEND_CCI: str = "cci"

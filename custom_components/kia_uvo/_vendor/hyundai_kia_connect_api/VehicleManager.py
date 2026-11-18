@@ -91,9 +91,16 @@ class VehicleManager:
             self.token.password = self.password
             self.token.pin = self.pin
 
-    def login(self) -> bool | OTPRequest:
-        """Returns True if login successful, or OTPOptions if OTP is required"""
-        result = self.api.login(
+    def login(self, guarded: bool = False) -> bool | OTPRequest:
+        """Returns True if login successful, or OTPOptions if OTP is required
+
+        guarded=True sends the login through the API's login limit (used by
+        the refresh path); the config flow keeps the plain, unlimited login.
+        """
+        login = self.api.login
+        if guarded:
+            login = getattr(self.api, "_guarded_login", login)
+        result = login(
             username=self.username,
             password=self.password,
             pin=self.pin,
@@ -214,7 +221,7 @@ class VehicleManager:
 
     def check_and_refresh_token(self) -> bool:
         if self.token is None:
-            if self.login() is True:
+            if self.login(guarded=True) is True:
                 if len(self.vehicles) == 0:
                     self.initialize_vehicles()
                 return True

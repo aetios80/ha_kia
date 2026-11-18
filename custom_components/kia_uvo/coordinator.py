@@ -55,6 +55,7 @@ from .const import (
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_USE_EMAIL_WITH_GEOCODE_API,
     DOMAIN,
+    LOGIN_FAILED_RETRY_CAP_SECONDS,
     OffPeakChargingMode,
 )
 
@@ -68,6 +69,10 @@ class KiaConnectEuDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """Initialize."""
         self.platforms: set[str] = set()
         self._action_lock = asyncio.Lock()
+        # Serialises every token refresh (poll, services, commands): the second
+        # caller waits, then finds the token already refreshed and does nothing.
+        self._refresh_lock = asyncio.Lock()
+        self._refresh_generation = 0
         self._svm_details: dict[str, SVMDetails] = {}
         # Per-vehicle SVM fisheye dewarp toggle (local UI state, off by default).
         self._svm_dewarp: dict[str, bool] = {}
@@ -149,17 +154,33 @@ class KiaConnectEuDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         )
         try:
             await self.async_check_and_refresh_token()
-        except (LoginThrottledError, LoginAttemptFailedError) as err:
+        except LoginThrottledError as err:
             # The login limit is not an authentication problem: no reauth.
             # Retry when the login window reopens.
             retry_after = max(60, int(err.retry_after))
             _LOGGER.warning(
-                "%s - Login limited to one per 6 hours; next attempt in %d s",
+                "%s - Full login throttled (one per 6 hours); next attempt in %d s",
                 DOMAIN,
                 retry_after,
             )
             raise UpdateFailed(
-                "Token refresh failed and the full login is limited",
+                "Token refresh failed and the full login is throttled",
+                retry_after=retry_after,
+            ) from err
+        except LoginAttemptFailedError as err:
+            # A failed full login is not a credentials answer: no reauth. The
+            # cheap CCI refresh is retried within 30 minutes at most; the
+            # login guard still allows one full login per 6 hours.
+            retry_after = min(
+                max(60, int(err.retry_after)), LOGIN_FAILED_RETRY_CAP_SECONDS
+            )
+            _LOGGER.warning(
+                "%s - Full login attempt failed; the token refresh is retried in %d s",
+                DOMAIN,
+                retry_after,
+            )
+            raise UpdateFailed(
+                "Token refresh failed and the full login attempt failed",
                 retry_after=retry_after,
             ) from err
         except AuthenticationError as AuthError:
@@ -292,20 +313,37 @@ class KiaConnectEuDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         HomeAssistantError; a manual command never resets or bypasses the
         limit.
         """
-        try:
-            await self.hass.async_add_executor_job(
-                self.vehicle_manager.check_and_refresh_token
-            )
-            await self._async_save_token()
-        except (LoginThrottledError, LoginAttemptFailedError) as err:
-            if not for_command:
-                raise
-            raise HomeAssistantError(
-                "Kia login is limited until "
-                f"{self._login_limit_until_text(err.retry_after)}"
-            ) from err
-        finally:
-            self._async_save_login_guard()
+        generation = self._refresh_generation
+        async with self._refresh_lock:
+            if generation != self._refresh_generation and self._token_is_fresh():
+                # Another caller refreshed while this one waited for the lock.
+                return
+            try:
+                await self.hass.async_add_executor_job(
+                    self.vehicle_manager.check_and_refresh_token
+                )
+                await self._async_save_token()
+            except (LoginThrottledError, LoginAttemptFailedError) as err:
+                if not for_command:
+                    raise
+                raise HomeAssistantError(
+                    "Kia login is limited until "
+                    f"{self._login_limit_until_text(err.retry_after)}"
+                ) from err
+            finally:
+                self._refresh_generation += 1
+                self._async_save_login_guard()
+
+    def _token_is_fresh(self) -> bool:
+        """True if the current token is valid for at least one more minute."""
+        token = self.vehicle_manager.token
+        valid_until = getattr(token, "valid_until", None)
+        if not isinstance(valid_until, dt.datetime):
+            return False
+        if valid_until.tzinfo is None:
+            valid_until = valid_until.replace(tzinfo=dt.UTC)
+        # Never subtract from valid_until: Token defaults to datetime.min.
+        return valid_until > dt.datetime.now(dt.UTC) + dt.timedelta(seconds=60)
 
     @staticmethod
     def _login_limit_until_text(retry_after: float) -> str:

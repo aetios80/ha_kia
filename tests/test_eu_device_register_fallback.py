@@ -2,32 +2,15 @@
 
 import datetime as dt
 import logging
-from pathlib import Path
-import sys
-from types import ModuleType
 import uuid
 
 import pytest
 
-
-COMPONENT_ROOT = Path(__file__).parent.parent / "custom_components" / "kia_uvo"
-
-
-def _register_namespace(name: str, path: Path) -> None:
-    package = ModuleType(name)
-    package.__path__ = [str(path)]
-    sys.modules.setdefault(name, package)
-
-
-_register_namespace("custom_components", COMPONENT_ROOT.parent)
-_register_namespace("custom_components.kia_uvo", COMPONENT_ROOT)
-_register_namespace("custom_components.kia_uvo._vendor", COMPONENT_ROOT / "_vendor")
-
-from custom_components.kia_uvo._vendor.hyundai_kia_connect_api.exceptions import (  # noqa: E402
+from custom_components.kia_uvo._vendor.hyundai_kia_connect_api.exceptions import (
     AuthenticationError,
     DeviceIDError,
 )
-from custom_components.kia_uvo._vendor.hyundai_kia_connect_api.KiaUvoApiEU import (  # noqa: E402
+from custom_components.kia_uvo._vendor.hyundai_kia_connect_api.KiaUvoApiEU import (
     KiaUvoApiEU,
 )
 
@@ -42,7 +25,7 @@ def _api(monkeypatch, register_error: Exception) -> KiaUvoApiEU:
     def _register(_stamp):
         raise register_error
 
-    def _login_with_password(_user, _password, device_id):
+    def _login_with_password(_user, _password, device_id, *_cycle):
         seen["device_id"] = device_id
         return {
             "access_token": "Bearer ccs",

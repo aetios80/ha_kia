@@ -1,27 +1,11 @@
 """Login limit: one full login per 6 hours, reauth after 2 rejected logins."""
 
 import json
-from pathlib import Path
 import sys
-from types import ModuleType
 
 import pytest
 
-
-COMPONENT_ROOT = Path(__file__).parent.parent / "custom_components" / "kia_uvo"
-
-
-def _register_namespace(name: str, path: Path) -> None:
-    package = ModuleType(name)
-    package.__path__ = [str(path)]
-    sys.modules.setdefault(name, package)
-
-
-_register_namespace("custom_components", COMPONENT_ROOT.parent)
-_register_namespace("custom_components.kia_uvo", COMPONENT_ROOT)
-_register_namespace("custom_components.kia_uvo._vendor", COMPONENT_ROOT / "_vendor")
-
-from custom_components.kia_uvo._vendor.hyundai_kia_connect_api.exceptions import (  # noqa: E402
+from custom_components.kia_uvo._vendor.hyundai_kia_connect_api.exceptions import (
     APIError,
     AuthenticationBlockedError,
     AuthenticationCciTokenExchangeError,
@@ -34,15 +18,15 @@ from custom_components.kia_uvo._vendor.hyundai_kia_connect_api.exceptions import
     LoginThrottledError,
     RequestTimeoutError,
 )
-from custom_components.kia_uvo._vendor.hyundai_kia_connect_api.KiaUvoApiEU import (  # noqa: E402
+from custom_components.kia_uvo._vendor.hyundai_kia_connect_api.KiaUvoApiEU import (
     KiaUvoApiEU,
 )
-from custom_components.kia_uvo._vendor.hyundai_kia_connect_api.login_guard import (  # noqa: E402
+from custom_components.kia_uvo._vendor.hyundai_kia_connect_api.login_guard import (
     LOGIN_FAILURE_LIMIT,
     LOGIN_WINDOW_SECONDS,
     LoginGuard,
 )
-from custom_components.kia_uvo._vendor.hyundai_kia_connect_api.Token import (  # noqa: E402
+from custom_components.kia_uvo._vendor.hyundai_kia_connect_api.Token import (
     Token,
 )
 
@@ -65,14 +49,14 @@ def _api(monkeypatch, guard, login_results):
     calls = []
     script = list(login_results)
 
-    def _login(username, password, pin=None):
+    def _login(username, password, pin=None, **_kwargs):
         calls.append((username, password, pin))
         item = script.pop(0)
         if isinstance(item, Exception):
             raise item
         return item
 
-    def _refresh_fails(_token):
+    def _refresh_fails(_token, *_args):
         raise RuntimeError("refresh failed")
 
     monkeypatch.setattr(api, "login", _login)
@@ -153,7 +137,7 @@ def test_throttled_login_sends_no_request(monkeypatch) -> None:
     monkeypatch.setattr(module, "http_request", _no_network)
     monkeypatch.setattr(module, "ApiImplSession", _no_network)
     monkeypatch.setattr(api, "_get_stamp", _no_network)
-    monkeypatch.setattr(api, "_refresh_cci_token", lambda _t: 1 / 0)
+    monkeypatch.setattr(api, "_refresh_cci_token", lambda *_a: 1 / 0)
     with pytest.raises(LoginThrottledError):
         api.refresh_access_token(_token())
 
@@ -298,3 +282,79 @@ def test_unrelated_keys_are_ignored() -> None:
         clock=_Clock(),
     )
     assert set(guard.to_dict()) == {"last_attempt_at", "failures"}
+
+
+def test_missing_password_does_not_consume_the_login_window(monkeypatch) -> None:
+    guard = LoginGuard(clock=_Clock())
+    api = _api(monkeypatch, guard, [])
+    for missing in ("", None):
+        with pytest.raises(AuthenticationError):
+            api._guarded_login("user@example.test", missing, None)
+    assert guard.last_attempt_at == 0.0
+    assert not guard.dirty
+    assert api.login_calls == []
+
+
+def test_remaining_time_is_clamped_when_the_clock_goes_backwards() -> None:
+    clock = _Clock(NOW)
+    guard = LoginGuard(last_attempt_at=NOW, clock=clock)
+    clock.now = NOW - 10 * HOUR
+    assert guard.remaining_seconds() == LOGIN_WINDOW_SECONDS
+    clock.now = NOW + 2 * LOGIN_WINDOW_SECONDS
+    assert guard.remaining_seconds() == 0.0
+
+
+def test_missing_token_branch_goes_through_the_login_limit(monkeypatch) -> None:
+    from custom_components.kia_uvo._vendor.hyundai_kia_connect_api.VehicleManager import (
+        VehicleManager,
+    )
+
+    clock = _Clock()
+    guard = LoginGuard(last_attempt_at=NOW - 60, clock=clock)
+    manager = VehicleManager(
+        region=1,
+        brand=1,
+        username="user@example.test",
+        password="s3cret-test-password",
+        pin="4321",
+        token=None,
+        login_guard=guard,
+    )
+    calls = []
+    monkeypatch.setattr(
+        manager.api, "login", lambda *a, **k: calls.append(1) or _token()
+    )
+    with pytest.raises(LoginThrottledError):
+        manager.check_and_refresh_token()
+    assert calls == []  # blocked before any login call
+
+    # Outcomes keep the same mapping as the refresh fallback.
+    guard.last_attempt_at = 0.0
+
+    def _redirect(*_a, **_k):
+        raise AuthenticationRedirectError("login page")
+
+    monkeypatch.setattr(manager.api, "login", _redirect)
+    with pytest.raises(LoginAttemptFailedError):
+        manager.check_and_refresh_token()
+    assert guard.failures == 1
+
+
+def test_config_flow_login_stays_unlimited(monkeypatch) -> None:
+    from custom_components.kia_uvo._vendor.hyundai_kia_connect_api.VehicleManager import (
+        VehicleManager,
+    )
+
+    guard = LoginGuard(last_attempt_at=NOW - 60, clock=_Clock())
+    manager = VehicleManager(
+        region=1,
+        brand=1,
+        username="user@example.test",
+        password="s3cret-test-password",
+        pin="4321",
+        login_guard=guard,
+    )
+    monkeypatch.setattr(manager.api, "login", lambda *a, **k: _token())
+    monkeypatch.setattr(manager, "initialize_vehicles", lambda: None)
+    assert manager.login() is True  # plain login: no guard, no window
+    assert not guard.dirty

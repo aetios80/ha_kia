@@ -1,27 +1,11 @@
 """The legacy 48-char token login and refresh_token grant are gone (#1506, #1507)."""
 
 import datetime as dt
-from pathlib import Path
-import sys
-from types import ModuleType
 
-COMPONENT_ROOT = Path(__file__).parent.parent / "custom_components" / "kia_uvo"
-
-
-def _register_namespace(name: str, path: Path) -> None:
-    package = ModuleType(name)
-    package.__path__ = [str(path)]
-    sys.modules.setdefault(name, package)
-
-
-_register_namespace("custom_components", COMPONENT_ROOT.parent)
-_register_namespace("custom_components.kia_uvo", COMPONENT_ROOT)
-_register_namespace("custom_components.kia_uvo._vendor", COMPONENT_ROOT / "_vendor")
-
-from custom_components.kia_uvo._vendor.hyundai_kia_connect_api.KiaUvoApiEU import (  # noqa: E402
+from custom_components.kia_uvo._vendor.hyundai_kia_connect_api.KiaUvoApiEU import (
     KiaUvoApiEU,
 )
-from custom_components.kia_uvo._vendor.hyundai_kia_connect_api.Token import (  # noqa: E402
+from custom_components.kia_uvo._vendor.hyundai_kia_connect_api.Token import (
     Token,
 )
 
@@ -50,7 +34,7 @@ def test_token_shaped_password_goes_through_the_cci_password_login(
     api = _api(monkeypatch)
     seen = {}
 
-    def _cci_login(_user, password, _device_id):
+    def _cci_login(_user, password, _device_id, *_cycle):
         seen["password"] = password
         return {
             "access_token": "Bearer ccs",
@@ -72,7 +56,8 @@ def test_token_without_cci_fields_is_migrated_by_full_login(monkeypatch) -> None
     monkeypatch.setattr(
         api,
         "login",
-        lambda user, password, pin=None: calls.append((user, password, pin)) or "new",
+        lambda user, password, pin=None, **_: calls.append((user, password, pin))
+        or "new",
     )
     stale = Token(
         username="user@example.test",

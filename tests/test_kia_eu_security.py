@@ -4,8 +4,6 @@ import ast
 import json
 import logging
 from pathlib import Path
-import sys
-from types import ModuleType
 
 import pytest
 import requests
@@ -13,16 +11,6 @@ import requests
 
 COMPONENT_ROOT = Path(__file__).parent.parent / "custom_components" / "kia_uvo"
 
-
-def _register_namespace(name: str, path: Path) -> None:
-    package = ModuleType(name)
-    package.__path__ = [str(path)]
-    sys.modules.setdefault(name, package)
-
-
-_register_namespace("custom_components", COMPONENT_ROOT.parent)
-_register_namespace("custom_components.kia_uvo", COMPONENT_ROOT)
-_register_namespace("custom_components.kia_uvo._vendor", COMPONENT_ROOT / "_vendor")
 
 from custom_components.kia_uvo._vendor.hyundai_kia_connect_api.Token import Token
 from custom_components.kia_uvo._vendor.hyundai_kia_connect_api.KiaUvoApiEU import (
@@ -188,7 +176,7 @@ def test_cci_auth_uses_the_secure_request_boundary() -> None:
         / "KiaUvoApiEU.py"
     ).read_text(encoding="utf-8")
 
-    assert source.count("http_request(") >= 3
+    assert source.count("http_request(") >= 2  # _post_gated: signed + legacy
     assert "requests.post(" not in source
 
 

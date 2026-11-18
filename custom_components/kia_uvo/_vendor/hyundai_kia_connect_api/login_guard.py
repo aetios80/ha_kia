@@ -84,7 +84,10 @@ class LoginGuard:
         """Seconds until the next full login is allowed (0 when allowed)."""
         if self.last_attempt_at <= 0:
             return 0.0
-        return max(0.0, self.last_attempt_at + LOGIN_WINDOW_SECONDS - self._clock())
+        # Clamped to [0, window]: a clock that moves backwards at runtime must
+        # not make the wait longer than one window.
+        remaining = self.last_attempt_at + LOGIN_WINDOW_SECONDS - self._clock()
+        return min(float(LOGIN_WINDOW_SECONDS), max(0.0, remaining))
 
     def next_allowed_at(self) -> float:
         """Epoch seconds of the next allowed attempt."""

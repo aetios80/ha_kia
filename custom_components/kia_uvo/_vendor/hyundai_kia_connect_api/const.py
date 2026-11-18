@@ -6,6 +6,14 @@ import datetime
 from enum import Enum, IntEnum
 
 DOMAIN: str = "hyundai_kia_connect_api"
+# The server rejects the CCS access token on the auth endpoints about 5-6
+# minutes before its real expiry while the token-test endpoint still passes
+# (upstream issue #1446, margin from upstream #1579, v5.3.1). The CCS
+# valid_until is pulled in by this margin so the refresh beats the rejection.
+CCI_TOKEN_REFRESH_MARGIN_SECONDS: int = 360
+# Floor for that rotation: a TTL below the margin must not yield a past
+# valid_until and spin the refresh loop.
+CCI_TOKEN_ROTATION_FLOOR_SECONDS: int = 300
 
 BRAND_KIA = "Kia"
 BRAND_HYUNDAI = "Hyundai"

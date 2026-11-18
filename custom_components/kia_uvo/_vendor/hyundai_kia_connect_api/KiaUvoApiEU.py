@@ -25,6 +25,8 @@ from .ApiImplType1 import (
 from .const import (
     BRAND_KIA,
     BRANDS,
+    CCI_TOKEN_REFRESH_MARGIN_SECONDS,
+    CCI_TOKEN_ROTATION_FLOOR_SECONDS,
     CHARGE_PORT_ACTION,
     DISTANCE_UNITS,
     DOMAIN,
@@ -580,12 +582,12 @@ class KiaUvoApiEU(ApiImplType1):
         # expiresTime is the CCS token TTL in seconds (e.g. 86400 = 24h), not an
         # epoch. Treat it as a relative duration from now; fall back to +1h.
         expires_in = data.get("expiresTime")
-        if expires_in:
-            ccs_valid_until = dt.datetime.now(dt.UTC) + dt.timedelta(
-                seconds=int(expires_in)
-            )
-        else:
-            ccs_valid_until = dt.datetime.now(dt.UTC) + dt.timedelta(seconds=3600)
+        ttl = (int(expires_in) if expires_in else 3600) - (
+            CCI_TOKEN_REFRESH_MARGIN_SECONDS
+        )
+        ccs_valid_until = dt.datetime.now(dt.UTC) + dt.timedelta(
+            seconds=max(ttl, CCI_TOKEN_ROTATION_FLOOR_SECONDS)
+        )
         return ccs_token, ccs_valid_until
 
     def refresh_access_token(self, token: Token) -> Token:

@@ -299,3 +299,31 @@ def test_logs_and_errors_carry_no_secrets(monkeypatch, caplog) -> None:
     ):
         assert secret not in combined
     assert "endpoint=auth_code_exchange" in caplog.text
+
+
+def test_ccs_valid_until_is_pulled_in_by_the_rotation_margin(monkeypatch) -> None:
+    import datetime as dt
+
+    from custom_components.kia_uvo._vendor.hyundai_kia_connect_api.const import (
+        CCI_TOKEN_REFRESH_MARGIN_SECONDS,
+        CCI_TOKEN_ROTATION_FLOOR_SECONDS,
+    )
+
+    assert CCI_TOKEN_REFRESH_MARGIN_SECONDS == 360
+    assert CCI_TOKEN_ROTATION_FLOOR_SECONDS == 300
+
+    api, _http = _api(
+        monkeypatch, _Resp(200, '{"accessToken":"ccs","expiresTime":3600}')
+    )
+    before = dt.datetime.now(dt.UTC)
+    _token_value, valid_until = api._exchange_ccs_token("d", "c", "n", "e")
+    after = dt.datetime.now(dt.UTC)
+    offset = dt.timedelta(seconds=3600 - CCI_TOKEN_REFRESH_MARGIN_SECONDS)
+    assert before + offset <= valid_until <= after + offset
+
+    api, _http = _api(
+        monkeypatch, _Resp(200, '{"accessToken":"ccs","expiresTime":200}')
+    )
+    before = dt.datetime.now(dt.UTC)
+    _token_value, valid_until = api._exchange_ccs_token("d", "c", "n", "e")
+    assert valid_until >= before + dt.timedelta(seconds=CCI_TOKEN_ROTATION_FLOOR_SECONDS)

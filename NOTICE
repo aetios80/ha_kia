@@ -13,10 +13,10 @@ v5.3.1, commit 750e4e2):
 - PR #1416: current browser User-Agent for the EU OneApp signin.
 - PR #1352, commit 97668164 (2026-10-14): X-Fingerprint signing of the CCI
   auth calls and gate-only legacy fallback. Kia constants and scheme in
-  cci_fingerprint.py; PR #1358 (cci_auth.py refactor) and PR #1481 (gate
-  rejection handling) shaped the structure.
+  cci_fingerprint.py; PR #1358 (cci_auth.py refactor) shaped the structure.
 - PR #1342: random device identity when the legacy device register fails.
-- PR #1477: AuthenticationInvalidCredentialsError for "invalid credentials".
+- PR #1477: typed authentication errors (redirect, sign-in, invalid credentials,
+  token exchange).
 - PR #1536: hint for passwords longer than 20 characters.
 - PR #1506 and PR #1507: removal of the 48-character token login and of the
   refresh_token grant.

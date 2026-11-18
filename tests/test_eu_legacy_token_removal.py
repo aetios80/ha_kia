@@ -5,9 +5,6 @@ from pathlib import Path
 import sys
 from types import ModuleType
 
-import pytest
-
-
 COMPONENT_ROOT = Path(__file__).parent.parent / "custom_components" / "kia_uvo"
 
 

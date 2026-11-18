@@ -171,10 +171,32 @@ class KiaUvoApiEU(ApiImplType1):
         # _may_fallback_to_legacy): a second gate rejection stops the cycle.
         self._legacy_fallback_used: bool = False
 
+    @staticmethod
+    def _log_exchange_failure(resp, endpoint: str) -> None:
+        """WARNING with endpoint label, HTTP status and the integer gate code.
+
+        Lets a live test tell a bad signature (9036), a missing header (9035),
+        a clock out of window (9037) and a business error (9013, 9030) apart.
+        Never the body, message, URL or any header value.
+        """
+        code = "none"
+        try:
+            parsed = json.loads(resp.text).get("code")
+            if isinstance(parsed, int) and not isinstance(parsed, bool):
+                code = str(parsed)
+        except (ValueError, AttributeError, TypeError):
+            pass
+        _LOGGER.warning(
+            "Kia Connect EU exchange_failed endpoint=%s status=%s code=%s",
+            endpoint,
+            resp.status_code,
+            code,
+        )
+
     def _may_fallback_to_legacy(self, resp, endpoint: str) -> bool:
         """True once per cycle, only for a genuine fingerprint-gate rejection.
 
-        Upstream #1352/#1481: the legacy route runs only when the signed call
+        Upstream #1352: the legacy route runs only when the signed call
         was answered by the gate itself (HTTP 4xx and JSON code 9035/9036/
         9037). Timeouts, 5xx, 4xx without a gate code and unparsable bodies
         raise instead of being retried on the legacy route. The log carries a
@@ -390,6 +412,12 @@ class KiaUvoApiEU(ApiImplType1):
             },
             allow_redirects=False,
         )
+        if resp.status_code in (403, 429):
+            raise AuthenticationBlockedError(
+                f"Signin was blocked by the identity provider (HTTP "
+                f"{resp.status_code}). This is a server-side block, not a "
+                "proven credentials problem."
+            )
         if resp.status_code >= 500:
             raise AuthenticationServiceError(
                 f"Signin failed: identity provider error HTTP {resp.status_code}."
@@ -403,6 +431,11 @@ class KiaUvoApiEU(ApiImplType1):
         code_list = parse_qs(urlparse(location).query).get("code")
         if not code_list:
             query = parse_qs(urlparse(location).query)
+            if "/error?status=400" in location:
+                raise AuthenticationBlockedError(
+                    "Signin was blocked by the identity provider (WAF). This "
+                    "is a server-side block, not a proven credentials problem."
+                )
             if query.get("error"):
                 # Upstream #1477: only an explicit "invalid credentials" is a
                 # proven credentials problem. Only a sanitised error code is
@@ -499,6 +532,7 @@ class KiaUvoApiEU(ApiImplType1):
                 timeout=(5, 30),
             )
         if resp.status_code != 200:
+            self._log_exchange_failure(resp, "auth_code_exchange")
             raise AuthenticationCciTokenExchangeError(
                 f"CCI token exchange failed: HTTP {resp.status_code}. "
                 "This may indicate an API change."
@@ -546,6 +580,7 @@ class KiaUvoApiEU(ApiImplType1):
                 timeout=(5, 30),
             )
         if resp.status_code != 200:
+            self._log_exchange_failure(resp, "ccs_token_exchange")
             raise AuthenticationCcsTokenExchangeError(
                 f"CCS token exchange failed: HTTP {resp.status_code}. "
                 "This may indicate an API change."
@@ -583,7 +618,8 @@ class KiaUvoApiEU(ApiImplType1):
                 return self._refresh_cci_token(token)
             except Exception as err:
                 _LOGGER.warning(
-                    "CCI token refresh failed (%s), falling back to full login",
+                    "CCI token refresh failed (%s); the full-login fallback follows, "
+                    "subject to the login limit",
                     _describe_refresh_error(err),
                 )
                 return self._guarded_login(token.username, token.password, token.pin)
@@ -686,6 +722,7 @@ class KiaUvoApiEU(ApiImplType1):
                 timeout=(5, 30),
             )
         if resp.status_code != 200:
+            self._log_exchange_failure(resp, "token_refresh")
             raise AuthenticationTokenExchangeError(
                 f"CCI token refresh failed: HTTP {resp.status_code}"
             )

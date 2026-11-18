@@ -238,3 +238,19 @@ def test_connection_error_message_has_no_query(monkeypatch) -> None:
         )
     assert "SENTINEL_CODE" not in str(excinfo.value)
     assert "cci-api-eu.kia.com/auth/v1/token" in str(excinfo.value)
+
+
+def test_signin_waf_block_is_a_block_not_a_credentials_answer(monkeypatch) -> None:
+    from custom_components.kia_uvo._vendor.hyundai_kia_connect_api.exceptions import (
+        AuthenticationBlockedError,
+    )
+
+    for signin in (
+        _Resp(status=403, text="blocked"),
+        _Resp(status=429, text="slow down"),
+        _redirect("https://idpconnect-eu.kia.com/error?status=400"),
+    ):
+        _api, _captured, run = _login(monkeypatch, signin)
+        with pytest.raises(AuthenticationBlockedError) as excinfo:
+            run()
+        assert not isinstance(excinfo.value, AuthenticationSigninError)

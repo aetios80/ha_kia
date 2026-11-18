@@ -4,8 +4,9 @@ Provenance (MIT, see NOTICE): port, Kia brand only, of
 Hyundai-Kia-Connect/hyundai_kia_connect_api file hyundai_kia_connect_api/
 cci_fingerprint.py as of tag v5.3.1 (commit 750e4e2). The signing scheme and
 the Kia constants originate from upstream PR #1352 (commit 97668164, merged
-2026-10-14) and were moved into this module by the refactor PR #1358; the
-gate-rejection handling follows PR #1481.
+2026-10-14) and were moved into this module by the refactor PR #1358. The
+gate-rejection family handling is part of the same upstream line of work
+(PR #1481 only adds Genesis constants and is not used here).
 
 Upstream documents that the OneApp app signs POSTs to cci-api-eu.../auth/*
 with X-Fingerprint = HMAC-SHA256 over the client identity plus app-embedded

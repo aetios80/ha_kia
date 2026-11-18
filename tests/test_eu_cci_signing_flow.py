@@ -327,3 +327,44 @@ def test_ccs_valid_until_is_pulled_in_by_the_rotation_margin(monkeypatch) -> Non
     before = dt.datetime.now(dt.UTC)
     _token_value, valid_until = api._exchange_ccs_token("d", "c", "n", "e")
     assert valid_until >= before + dt.timedelta(seconds=CCI_TOKEN_ROTATION_FLOOR_SECONDS)
+
+
+def test_failed_exchange_logs_endpoint_status_and_int_code_only(
+    monkeypatch, caplog
+) -> None:
+    cases = (
+        (400, '{"code":9036,"message":"SENTINEL_MESSAGE"}', "status=400 code=9036"),
+        (400, '{"code":9013,"message":"SENTINEL_MESSAGE"}', "status=400 code=9013"),
+        (502, "<html>SENTINEL_MESSAGE</html>", "status=502 code=none"),
+        (400, '{"code":"9036"}', "status=400 code=none"),
+    )
+    for status, body, expected in cases:
+        caplog.records.clear()
+        api, _http = _api(monkeypatch, _Resp(status, body))
+        with caplog.at_level(logging.WARNING):
+            # A gate code is retried once on the legacy route: give it a
+            # second response so the final failure is what gets logged.
+            if '"code":9036' in body and '"9036"' not in body:
+                api, _http = _api(monkeypatch, _Resp(status, body), _Resp(status, body))
+            with pytest.raises(AuthenticationCciTokenExchangeError):
+                api._exchange_auth_code_for_cci_tokens("SENTINEL-DEVICE", "SENTINEL_CODE")
+        text = caplog.text
+        assert "exchange_failed endpoint=auth_code_exchange" in text
+        assert expected in text
+        for secret in ("SENTINEL_MESSAGE", "SENTINEL-DEVICE", "SENTINEL_CODE"):
+            assert secret not in text
+
+
+def test_failed_ccs_exchange_and_refresh_log_their_endpoint(monkeypatch, caplog) -> None:
+    api, _http = _api(monkeypatch, _Resp(500, "boom"))
+    with caplog.at_level(logging.WARNING):
+        with pytest.raises(AuthenticationCcsTokenExchangeError):
+            api._exchange_ccs_token("d", "c", "n", "e")
+    assert "exchange_failed endpoint=ccs_token_exchange status=500 code=none" in caplog.text
+
+    caplog.records.clear()
+    api, _http = _api(monkeypatch, _Resp(401, '{"code":9030}'))
+    with caplog.at_level(logging.WARNING):
+        with pytest.raises(AuthenticationTokenExchangeError):
+            api._refresh_cci_token(_token())
+    assert "exchange_failed endpoint=token_refresh status=401 code=9030" in caplog.text

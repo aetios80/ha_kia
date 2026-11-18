@@ -6,7 +6,6 @@ touches a real Home Assistant installation or the network.
 """
 
 import asyncio
-
 import datetime as dt
 import importlib.util
 from pathlib import Path
@@ -34,7 +33,6 @@ _register_namespace("custom_components.kia_uvo._vendor", COMPONENT_ROOT / "_vend
 from custom_components.kia_uvo._vendor.hyundai_kia_connect_api.exceptions import (  # noqa: E402
     AuthenticationError,
     LoginAttemptFailedError,
-    LoginThrottledError,
 )
 from custom_components.kia_uvo._vendor.hyundai_kia_connect_api.login_guard import (  # noqa: E402
     LOGIN_WINDOW_SECONDS,
@@ -195,10 +193,6 @@ class _Entry:
     def __init__(self, data):
         self.data = data
         self.options = {}
-
-
-class _FakeToken(Token):
-    pass
 
 
 def _entry_data(guard_state=None) -> dict:

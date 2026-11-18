@@ -10,6 +10,7 @@ Custom Home Assistant integration for Kia Connect vehicles registered in Europe.
 - Kia vehicles only.
 - The integration uses a vendored CCI client subset for status and supported remote controls.
 - The separate official Vehicle Data API path is read-only, prepared but disabled, and does not replace remote control capabilities.
+- The integration emulates the official Kia application to reach the Kia Connect EU service; Kia can change that service without notice.
 - Remote capability depends on the vehicle model, account entitlement, and Kia service availability.
 
 ## Installation
@@ -28,9 +29,17 @@ Copy `custom_components/kia_uvo` to `config/custom_components/`, then restart Ho
 
 ## Configuration
 
-In Home Assistant, open **Settings** -> **Devices & Services** -> **Integrations** and add **Kia Connect EU**. The wizard first selects the data backend. `Kia Connect CCI` is the active backend and then requests the Kia Connect username, password, and optional remote-command PIN. `Official Data API` is intentionally unavailable until Kia grants third-party access; it never requests Kia account credentials.
+In Home Assistant, open **Settings** -> **Devices & Services** -> **Integrations** and add **Kia Connect EU**. The wizard first selects the data backend. `Kia Connect CCI` is the active backend and then requests the Kia Connect username, password, and optional remote-command PIN. `Official Data API` is not available in this release and never requests Kia account credentials. A private, access-controlled Pleos Vehicle Data API now exists under the EU Data Act regime; it is not integrated yet.
 
 `kia_uvo` remains the Home Assistant domain identifier for compatibility with existing configuration entries. It is not a statement of product branding or regional support.
+
+## Login behavior and limits
+
+- When a token refresh fails, the integration may fall back to one full password login. It is limited to one full login every 6 hours per config entry; the limit survives Home Assistant restarts.
+- A login rejected as invalid credentials starts the reauthentication flow at once. A redirect back to the login page (which can mean a rejected User-Agent or a wrong password) counts toward two consecutive rejections, then reauthentication starts and polling stops until you re-enter the password.
+- Network errors, server errors and temporary Kia blocks never start reauthentication; the integration waits for the next login window.
+- Passwords longer than 20 characters may be accepted by some Kia accounts only up to the first 20 characters.
+- Breaking change: a 48-character refresh token used as the password is no longer supported. Reconfigure the entry with the real account password.
 
 ## Security and Privacy
 

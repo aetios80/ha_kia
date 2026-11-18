@@ -176,8 +176,18 @@ def test_cci_auth_uses_the_secure_request_boundary() -> None:
         / "KiaUvoApiEU.py"
     ).read_text(encoding="utf-8")
 
-    assert source.count("http_request(") >= 2  # _post_gated: signed + legacy
-    assert "requests.post(" not in source
+    assert "def _post_gated(" in source
+    for method in (
+        "_exchange_auth_code_for_cci_tokens",
+        "_exchange_ccs_token",
+        "_refresh_cci_token",
+    ):
+        start = source.index(f"    def {method}(")
+        end = source.index("\n    def ", start + 1)
+        assert "self._post_gated(" in source[start:end], method
+        assert "http_request(" not in source[start:end], method
+    assert "requests." not in source
+    assert "import requests" not in source
 
 
 def test_hacs_manifest_has_no_external_api_dependency() -> None:

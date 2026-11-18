@@ -45,7 +45,6 @@ from .exceptions import (
     AuthenticationInvalidCredentialsError,
     AuthenticationRedirectError,
     AuthenticationServiceError,
-    AuthenticationSigninError,
     AuthenticationTokenExchangeError,
     ConsentRequiredError,
     LoginAttemptFailedError,
@@ -482,8 +481,11 @@ class KiaUvoApiEU(ApiImplType1):
                     "Kia rejected the signin with a client error. The cause can "
                     "be a rejected User-Agent or a wrong password (credentials)."
                 )
-            raise AuthenticationSigninError(
-                f"Signin failed: unexpected HTTP {resp.status_code}."
+            # 200 with an HTML page, other 3xx: the same ambiguity as a 4xx.
+            _LOGGER.warning("Kia Connect EU signin outcome=unexpected_status")
+            raise AuthenticationRedirectError(
+                "Kia answered the signin with an unexpected response. The cause "
+                "can be a rejected User-Agent or a wrong password (credentials)."
             )
         location = resp.headers.get("location", "")
         code_list = parse_qs(urlparse(location).query).get("code")
@@ -704,16 +706,21 @@ class KiaUvoApiEU(ApiImplType1):
         is consulted before any network request and counts the attempt. The
         outcome decides what the caller sees:
 
-        - proven bad credentials (AuthenticationInvalidCredentialsError) and
-          other explicit IdP rejections or account states (consent, missing
-          password): raised as is, reauthentication at the first error;
-        - redirect back to the login page (ambiguous: User-Agent or password):
-          counts toward LOGIN_FAILURE_LIMIT, below it LoginAttemptFailedError,
-          at the limit the original AuthenticationError (reauthentication);
-        - WAF block, certificate, token-exchange or server errors: neither
-          counted nor reauthentication, LoginAttemptFailedError;
-        - network errors and timeouts propagate unchanged and do not count
-          as failures (the attempt still uses the window).
+        - reauthentication at the FIRST error, raised as is: explicit
+          "invalid credentials" (AuthenticationInvalidCredentialsError),
+          account consent required, missing password;
+        - COUNTED toward LOGIN_FAILURE_LIMIT (ambiguous: User-Agent or
+          password), all AuthenticationRedirectError: redirect back to the
+          login page, generic signin 4xx, an unexpected signin status, any
+          other IdP error= code. Below the limit the caller sees
+          LoginAttemptFailedError, at the limit the original error
+          (reauthentication, polling stops);
+        - NOT counted and no reauthentication, LoginAttemptFailedError:
+          403/429 and WAF blocks, RSA certificate errors, identity-provider
+          5xx, token-exchange errors (which include gate rejections that the
+          single legacy fallback could not cure);
+        - network errors and timeouts propagate unchanged, are not counted;
+        - in every case the attempt uses the login window.
         """
         if not password:
             # No network without a password: do not consume the login window.

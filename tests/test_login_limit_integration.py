@@ -23,6 +23,7 @@ COMPONENT_ROOT = Path(__file__).parent.parent / "custom_components" / "kia_uvo"
 from custom_components.kia_uvo._vendor.hyundai_kia_connect_api.exceptions import (
     AuthenticationError,
     LoginAttemptFailedError,
+    LoginThrottledError,
 )
 from custom_components.kia_uvo._vendor.hyundai_kia_connect_api.login_guard import (
     LOGIN_WINDOW_SECONDS,
@@ -497,3 +498,64 @@ def test_legacy_48_char_token_password_opens_reauth_without_login() -> None:
     hass.data = {}
     assert asyncio.run(module.async_setup_entry(hass, normal_entry)) is True
     assert len(created) == 1
+
+
+def test_a_cancelled_caller_does_not_release_the_lock_early() -> None:
+    calls: list = []
+    _module, coordinator, hass, _entry = _coordinator(_fresh_token_behaviour(calls))
+
+    async def _run():
+        gate = asyncio.Event()
+        started: list = []
+
+        async def _executor(func, *args):
+            started.append(1)
+            await gate.wait()
+            return func(*args)
+
+        hass.async_add_executor_job = _executor
+        first = asyncio.ensure_future(coordinator.async_check_and_refresh_token())
+        for _ in range(5):
+            await asyncio.sleep(0)
+        first.cancel()
+        second = asyncio.ensure_future(coordinator.async_check_and_refresh_token())
+        for _ in range(5):
+            await asyncio.sleep(0)
+        # The refresh is still running: the lock is held, nobody else started.
+        still_locked = coordinator._refresh_lock.locked()
+        started_while_running = len(started)
+        gate.set()
+        results = await asyncio.gather(first, second, return_exceptions=True)
+        return still_locked, started_while_running, results
+
+    still_locked, started_while_running, results = asyncio.run(_run())
+    assert still_locked and started_while_running == 1
+    assert isinstance(results[0], asyncio.CancelledError)
+    assert results[1] is None
+    assert len(calls) == 1  # the waiter found the refreshed token
+    assert not coordinator._refresh_lock.locked()
+
+
+def test_second_caller_after_a_failure_retries_and_meets_the_login_limit() -> None:
+    attempts: list = []
+
+    def _refresh(manager):
+        attempts.append(1)
+        manager.login_guard.begin_attempt()  # raises LoginThrottledError 2nd time
+        raise RuntimeError("first attempt fails after using the window")
+
+    _module, coordinator, _hass, entry = _coordinator(_refresh)
+
+    async def _run():
+        return await asyncio.gather(
+            coordinator.async_check_and_refresh_token(),
+            coordinator.async_check_and_refresh_token(),
+            return_exceptions=True,
+        )
+
+    results = asyncio.run(_run())
+    assert isinstance(results[0], RuntimeError)
+    assert isinstance(results[1], LoginThrottledError)
+    assert len(attempts) == 2  # the waiter retried instead of skipping
+    saved = entry.data[CONF_LOGIN_GUARD]
+    assert saved["last_attempt_at"] > 0 and saved["failures"] == 0

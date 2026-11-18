@@ -252,3 +252,20 @@ def test_generic_signin_4xx_is_counted_not_an_immediate_reauth(monkeypatch) -> N
             run()
         assert not isinstance(excinfo.value, AuthenticationInvalidCredentialsError)
         assert not isinstance(excinfo.value, AuthenticationSigninError)
+
+
+def test_unexpected_signin_status_is_counted_with_a_fixed_warning(
+    monkeypatch, caplog
+) -> None:
+    for status in (200, 301):
+        caplog.records.clear()
+        _api, _captured, run = _login(
+            monkeypatch,
+            _Resp(status=status, text="<html>SENTINEL_PAGE</html>"),
+        )
+        with caplog.at_level(logging.WARNING):
+            with pytest.raises(AuthenticationRedirectError) as excinfo:
+                run()
+        assert not isinstance(excinfo.value, AuthenticationSigninError)
+        assert "outcome=unexpected_status" in caplog.text
+        assert "SENTINEL_PAGE" not in caplog.text + str(excinfo.value)

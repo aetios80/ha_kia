@@ -318,21 +318,33 @@ class KiaConnectEuDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             if generation != self._refresh_generation and self._token_is_fresh():
                 # Another caller refreshed while this one waited for the lock.
                 return
+            task = asyncio.ensure_future(self._async_refresh(for_command))
             try:
-                await self.hass.async_add_executor_job(
-                    self.vehicle_manager.check_and_refresh_token
-                )
-                await self._async_save_token()
-            except (LoginThrottledError, LoginAttemptFailedError) as err:
-                if not for_command:
-                    raise
-                raise HomeAssistantError(
-                    "Kia login is limited until "
-                    f"{self._login_limit_until_text(err.retry_after)}"
-                ) from err
-            finally:
-                self._refresh_generation += 1
-                self._async_save_login_guard()
+                await asyncio.shield(task)
+            except asyncio.CancelledError:
+                # The caller was cancelled but the executor job keeps running:
+                # hold the lock until it has really finished.
+                await asyncio.wait({task})
+                if not task.cancelled():
+                    task.exception()  # mark as retrieved
+                raise
+
+    async def _async_refresh(self, for_command: bool) -> None:
+        try:
+            await self.hass.async_add_executor_job(
+                self.vehicle_manager.check_and_refresh_token
+            )
+            await self._async_save_token()
+        except (LoginThrottledError, LoginAttemptFailedError) as err:
+            if not for_command:
+                raise
+            raise HomeAssistantError(
+                "Kia login is limited until "
+                f"{self._login_limit_until_text(err.retry_after)}"
+            ) from err
+        finally:
+            self._refresh_generation += 1
+            self._async_save_login_guard()
 
     def _token_is_fresh(self) -> bool:
         """True if the current token is valid for at least one more minute."""
